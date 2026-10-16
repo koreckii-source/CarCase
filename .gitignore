@@ -1,0 +1,15 @@
+# секреты и локальные данные
+.env
+data/
+*.log
+*.err
+# служебное и черновики
+promo/
+avatar*.png
+avatar*.svg
+*.mp4
+node_modules/
+.idea/
+tunnel.ps1
+start.bat
+avatar_credits.txt

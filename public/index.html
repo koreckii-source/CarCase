@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Car Case</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@font-face { font-family: 'Caveat'; src: url(fonts/caveat.ttf) format('truetype'); font-weight: 400 700; font-display: swap; }
+:root {
+  --text: #fff; --muted: rgba(255,255,255,.62); --accent: #ffb020; --accent2: #ff7a18;
+  --glass: rgba(14, 18, 38, .42); --glass2: rgba(255,255,255,.08); --line: rgba(255,255,255,.16);
+  --blur: blur(16px) saturate(1.5);
+  --hand: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
+  --sys: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { font-family: var(--hand); font-weight: 700; color: var(--text); font-size: 20px; user-select: none; -webkit-user-select: none; overscroll-behavior: none; background: #0b1230; }
+img { -webkit-user-drag: none; }
+
+/* ===== обои как в Telegram ===== */
+.wall { position: fixed; inset: 0; z-index: -2; overflow: hidden; background: linear-gradient(160deg, #0d1b4a 0%, #3a1c71 38%, #b24592 72%, #f5576c 120%); }
+.wall::before { content: ''; position: absolute; inset: -20%; background:
+  radial-gradient(40% 35% at 20% 15%, rgba(80,180,255,.45), transparent 70%),
+  radial-gradient(45% 40% at 85% 55%, rgba(255,140,60,.35), transparent 70%),
+  radial-gradient(40% 40% at 30% 95%, rgba(140,80,255,.45), transparent 70%); animation: drift 18s ease-in-out infinite alternate; }
+.wall::after { content: ''; position: absolute; inset: 0; background: url(wallpaper.svg) 0 0 / 300px 300px; opacity: .17; mix-blend-mode: soft-light; animation: pattern 90s linear infinite; }
+@keyframes drift { to { transform: translate(6%, -5%) scale(1.12); } }
+@keyframes pattern { to { background-position: 300px 300px; } }
+
+#app { height: 100%; height: 100dvh; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
+.glass { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--line); box-shadow: 0 8px 28px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.12); }
+.hide { display: none !important; }
+
+.top { margin: 10px 12px 0; padding: 8px 12px; border-radius: 22px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand svg.logo { width: 42px; height: 42px; flex: none; filter: drop-shadow(0 0 8px rgba(255,176,32,.55)); }
+.brand .name { font-size: 30px; line-height: .9; letter-spacing: .5px; }
+.brand .sub { font-size: 16px; color: var(--muted); line-height: 1; }
+.bal { display: flex; align-items: center; gap: 6px; background: var(--glass2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 6px; font-size: 26px; color: var(--accent); white-space: nowrap; }
+.bal svg { width: 28px; height: 28px; color: var(--accent); }
+.bal.bump { animation: bump .5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes bump { 40% { transform: scale(1.14); } }
+
+main { flex: 1; min-height: 0; position: relative; padding: 10px 12px 104px; }
+section.page { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+section.in-right { animation: inR .5s cubic-bezier(.2,.9,.3,1) both; }
+section.in-left { animation: inL .5s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes inR { from { opacity: 0; transform: translateX(40px) scale(.97); filter: blur(8px); } }
+@keyframes inL { from { opacity: 0; transform: translateX(-40px) scale(.97); filter: blur(8px); } }
+.pagehead { display: flex; align-items: center; gap: 8px; font-size: 36px; line-height: 1; margin: 2px 4px 8px; text-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.pagehead svg { width: 32px; height: 32px; color: var(--accent); flex: none; }
+.pagehead small { margin-left: auto; font-size: 20px; color: var(--muted); }
+.pagehead .infobtn { margin-left: 8px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass2); color: var(--muted); padding: 0; display: flex; align-items: center; justify-content: center; }
+.pagehead .infobtn svg { width: 18px; height: 18px; color: inherit; }
+
+/* ===== рулетка ===== */
+.roulette { position: relative; height: 150px; border-radius: 22px; overflow: hidden; flex: none; }
+.roulette::before { content: ''; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 4px; margin-left: -2px; border-radius: 4px; background: linear-gradient(180deg, #fff, var(--accent)); z-index: 2; box-shadow: 0 0 14px var(--accent); }
+.roulette::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(20,16,50,.75), transparent 22%, transparent 78%, rgba(20,16,50,.75)); }
+.strip { display: flex; height: 100%; align-items: center; will-change: transform; }
+.item { position: relative; flex: 0 0 122px; height: 124px; margin: 0 4px; border-radius: 16px; background: radial-gradient(70% 60% at 50% 38%, color-mix(in srgb, var(--c) 38%, transparent), transparent 75%), var(--glass2); border: 1px solid var(--line); border-bottom: 4px solid var(--c); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6px; gap: 2px; transition: transform .35s, box-shadow .35s; }
+.item img { width: 104px; height: 58px; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.item span { font-size: 17px; line-height: 1; max-height: 34px; overflow: hidden; }
+.item.hit { transform: scale(1.1); box-shadow: 0 0 28px var(--c); z-index: 3; }
+.spin-btn { flex: none; width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 20px; font-family: var(--hand); font-weight: 700; font-size: 30px; line-height: 1; color: #1a1000; background: linear-gradient(180deg, #ffd061, #ff9d00); box-shadow: 0 5px 0 #b36d00, 0 12px 28px rgba(255,160,0,.35); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.spin-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 #b36d00; }
+.spin-btn:disabled { opacity: .5; }
+.spin-btn svg { width: 28px; height: 28px; }
+.hint { flex: none; min-height: 22px; text-align: center; color: var(--muted); font-size: 19px; margin: 6px 0 2px; }
+.seg { flex: none; display: flex; gap: 4px; padding: 4px; border-radius: 999px; margin: 6px 0 10px; }
+.seg button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; color: var(--muted); font-family: var(--hand); font-weight: 700; font-size: 23px; padding: 6px 0; border-radius: 999px; transition: .3s; }
+.seg button svg { width: 20px; height: 20px; }
+.seg button.on { background: rgba(255,255,255,.22); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.panel { flex: 1; min-height: 0; overflow: hidden; }
+.odds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.odds .o { display: flex; align-items: center; gap: 6px; border-radius: 16px; padding: 8px 8px; border-left: 4px solid var(--c); font-size: 19px; white-space: nowrap; }
+.odds .o svg { width: 22px; height: 22px; color: var(--c); flex: none; }
+.odds .o b { margin-left: auto; }
+.hist { display: flex; flex-direction: column; gap: 6px; }
+.hrow { display: flex; align-items: center; gap: 10px; border-radius: 16px; padding: 3px 10px; border-left: 4px solid var(--c); }
+.hrow img { width: 62px; height: 32px; object-fit: contain; flex: none; }
+.hrow .n { flex: 1; font-size: 20px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow .p { font-size: 20px; color: var(--accent); }
+
+/* ===== гараж / каталог ===== */
+.chips { flex: none; display: flex; gap: 5px; margin: 6px 0 8px; }
+.chip { flex: 1; min-width: 0; position: relative; height: 46px; border-radius: 16px; border: 1px solid var(--line); background: var(--glass2); color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; transition: .3s; backdrop-filter: blur(8px); font-family: var(--hand); font-weight: 700; }
+.chip svg { width: 21px; height: 21px; flex: none; }
+.chip.on { color: #fff; background: color-mix(in srgb, var(--c, #fff) 45%, transparent); border-color: var(--c, #fff); box-shadow: 0 0 16px color-mix(in srgb, var(--c, #fff) 55%, transparent); transform: translateY(-2px); }
+.chip .cnt { position: absolute; top: -6px; right: -3px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--c, #fff); color: #111; font-size: 15px; line-height: 20px; text-align: center; }
+.sumline { flex: none; display: flex; justify-content: space-between; align-items: center; border-radius: 16px; padding: 6px 12px; margin-bottom: 4px; font-size: 21px; }
+.sumline b { color: var(--accent); }
+.gridwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; overflow: hidden; }
+.grid.flip-n { animation: flipN .4s cubic-bezier(.2,.9,.3,1); } .grid.flip-p { animation: flipP .4s cubic-bezier(.2,.9,.3,1); }
+@keyframes flipN { from { opacity: 0; transform: translateX(30px); } } @keyframes flipP { from { opacity: 0; transform: translateX(-30px); } }
+.car { position: relative; border-radius: 20px; padding: 6px 10px 8px; border-top: 3px solid var(--c); display: flex; flex-direction: column; min-height: 0; overflow: hidden; height: 140px; cursor: pointer; transition: transform .25s cubic-bezier(.3,1.6,.5,1); }
+.car:active { transform: scale(.96); }
+.car .spot { position: absolute; left: 0; right: 0; top: 0; height: 80px; background: radial-gradient(60% 70% at 50% 55%, color-mix(in srgb, var(--c) 45%, transparent), transparent 75%); pointer-events: none; }
+.car img { position: relative; width: 100%; height: 66px; object-fit: contain; flex: none; filter: drop-shadow(0 8px 8px rgba(0,0,0,.45)); }
+.car .nm { position: relative; font-size: 20px; line-height: .95; height: 38px; overflow: hidden; margin-top: 2px; }
+.car .meta { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: auto; }
+.car .rr { display: flex; align-items: center; color: var(--c); line-height: 1; }
+.car .rr svg { width: 21px; height: 21px; }
+.car .pr { font-size: 22px; color: var(--accent); line-height: 1; }
+.car .cntb { position: absolute; top: 6px; right: 8px; z-index: 2; background: var(--c); color: #111; font-size: 17px; line-height: 1; border-radius: 10px; padding: 2px 8px; }
+.car.locked { opacity: .55; }
+.car.locked img { filter: brightness(0) opacity(.45); }
+.car.locked .nm { color: var(--muted); }
+.empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding-top: 30px; font-size: 26px; }
+.empty svg { width: 90px; height: 90px; display: block; margin: 0 auto 8px; opacity: .8; }
+.pager { flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 0 0; }
+.pager button { width: 44px; height: 38px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass2); color: #fff; backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; }
+.pager button:disabled { opacity: .3; } .pager button svg { width: 20px; height: 20px; }
+.pager .dots { display: flex; gap: 6px; align-items: center; min-width: 70px; justify-content: center; }
+.pager .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); transition: .3s; }
+.pager .dots i.on { width: 22px; border-radius: 6px; background: var(--accent); }
+.prog { flex: none; height: 8px; border-radius: 6px; background: rgba(255,255,255,.15); overflow: hidden; margin: 0 2px 4px; }
+.prog i { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .6s cubic-bezier(.3,1.2,.5,1); }
+
+/* ===== остров-навигация ===== */
+.island-wrap { position: fixed; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; z-index: 10; pointer-events: none; }
+.tabs { pointer-events: auto; display: flex; gap: 4px; padding: 6px; background: rgba(0,0,0,.82); backdrop-filter: blur(14px); border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12), inset 0 1px 0 rgba(255,255,255,.08); }
+.tabs.jelly { animation: jelly .55s cubic-bezier(.3,1.6,.5,1); }
+@keyframes jelly { 30% { transform: scale(1.06,.92); } 60% { transform: scale(.98,1.04); } }
+.tabs button { position: relative; display: flex; align-items: center; height: 52px; min-width: 52px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: rgba(255,255,255,.6); overflow: hidden; font-family: var(--hand); font-weight: 700; transition: background .35s, color .35s, padding .5s cubic-bezier(.34,1.5,.5,1), transform .2s; }
+.tabs button svg { flex: none; width: 26px; height: 26px; }
+.tabs button .lbl { max-width: 0; opacity: 0; margin-left: 0; white-space: nowrap; font-size: 27px; line-height: 1; transform: translateX(-8px) scale(.85); filter: blur(4px); transition: max-width .55s cubic-bezier(.34,1.3,.5,1), opacity .3s, margin .4s, transform .5s cubic-bezier(.34,1.5,.5,1), filter .4s; }
+.tabs button.on { background: linear-gradient(180deg, #ffd061, #ff9d00); color: #1a1000; padding: 0 18px 0 14px; box-shadow: 0 0 18px rgba(255,176,32,.5); }
+.tabs button.on svg { animation: wiggle .6s ease both; }
+.tabs button.on .lbl { max-width: 130px; opacity: 1; margin-left: 8px; transform: none; filter: none; }
+.tabs button:not(.on):active { background: rgba(255,255,255,.12); transform: scale(.92); }
+@keyframes wiggle { 0% { transform: scale(.7) rotate(-25deg); } 50% { transform: scale(1.25) rotate(8deg); } 100% { transform: scale(1.06) rotate(-4deg); } }
+.tabs .ripple { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: rgba(255,255,255,.35); transform: scale(0); animation: rip .6s ease-out forwards; pointer-events: none; }
+@keyframes rip { to { transform: scale(6); opacity: 0; } }
+.topisland { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; z-index: 90; display: flex; align-items: center; justify-content: center; background: #000; color: #fff; border-radius: 999px; height: 40px; width: 40px; overflow: hidden; opacity: 0; transform: translateX(-50%); box-shadow: 0 6px 20px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.12); pointer-events: none; transition: width .5s cubic-bezier(.34,1.5,.5,1), opacity .2s; }
+.topisland.show { opacity: 1; width: var(--w, 180px); }
+.topisland span { white-space: nowrap; font-size: 26px; opacity: 0; transition: opacity .25s .15s; }
+.topisland.show span { opacity: 1; }
+
+/* ========================================================= */
+/* ===== СЦЕНА ВЫИГРЫША / ВИТРИНА ===== */
+/* ========================================================= */
+.stage { position: fixed; inset: 0; z-index: 50; background: #04050d; overflow: hidden; animation: stIn .35s ease both; }
+.stage.out { animation: stOut .3s ease forwards; }
+@keyframes stIn { from { opacity: 0; } } @keyframes stOut { to { opacity: 0; } }
+.stage > * { position: absolute; }
+.st-bg { inset: 0; background: radial-gradient(70% 50% at 50% 42%, var(--c40), #04050d 72%); opacity: 0; transition: opacity 1.2s ease; }
+.stage.pre .st-bg { opacity: .35; } .stage.show .st-bg, .stage.view .st-bg { opacity: 1; }
+.st-vig { inset: 0; background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(0,0,0,.85)); pointer-events: none; }
+.st-beams { left: 50%; top: 42%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax; background: repeating-conic-gradient(from 0deg, transparent 0 8deg, var(--c40) 11deg, transparent 14deg 24deg); filter: blur(3px); -webkit-mask: radial-gradient(circle, #000 0, transparent 30%); mask: radial-gradient(circle, #000 0, transparent 30%); opacity: 0; animation: spinSlow 80s linear infinite; pointer-events: none; }
+.stage.show .st-beams, .stage.view .st-beams { opacity: calc(var(--beam, 0) * .8); transition: opacity 1.4s ease; }
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.st-core { left: 50%; top: 42%; width: 34vmin; height: 34vmin; margin: -17vmin 0 0 -17vmin; border-radius: 50%; background: radial-gradient(circle, #fff 0, var(--c) 28%, transparent 68%); filter: blur(4px); opacity: 0; transform: scale(0); pointer-events: none; }
+.stage.pre .st-core { animation: coreIn var(--pre, 1s) cubic-bezier(.5,0,.8,.4) forwards, corePulse .9s ease-in-out infinite; }
+@keyframes coreIn { 0% { opacity: 0; transform: scale(.05); } 100% { opacity: 1; transform: scale(var(--coreS, .8)); } }
+@keyframes corePulse { 50% { filter: blur(4px) brightness(1.5); } }
+.stage.beat .st-core { animation: coreIn var(--pre, 1s) linear forwards, heart .8s ease-in-out infinite; }
+@keyframes heart { 0%, 100% { filter: blur(4px) brightness(1); } 12% { filter: blur(3px) brightness(2.2); } 24% { filter: blur(4px) brightness(1); } 36% { filter: blur(3px) brightness(1.8); } }
+.stage.burst .st-core { animation: coreBurst .9s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes coreBurst { 0% { opacity: 1; transform: scale(var(--coreS, .8)); } 100% { opacity: 0; transform: scale(9); } }
+.st-fx { inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.st-flash { inset: 0; background: radial-gradient(circle at 50% 42%, #fff, var(--c) 60%, var(--c)); opacity: 0; pointer-events: none; }
+.stage.burst .st-flash { animation: flash .9s ease-out forwards; }
+@keyframes flash { 0% { opacity: var(--flash, .5); } 100% { opacity: 0; } }
+.st-streak { left: 0; right: 0; top: 42%; height: 3px; margin-top: -1px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); box-shadow: 0 0 30px 8px var(--c); transform: scaleX(0); opacity: 0; pointer-events: none; }
+.stage.burst.has-streak .st-streak { animation: streak 1.3s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes streak { 0% { transform: scaleX(0); opacity: 1; } 35% { opacity: 1; } 100% { transform: scaleX(1.4); opacity: 0; } }
+.st-rings { inset: 0; pointer-events: none; }
+.st-rings i { position: absolute; left: 50%; top: 42%; width: 46vmin; height: 46vmin; margin: -23vmin 0 0 -23vmin; border-radius: 50%; border: 2px solid var(--c); box-shadow: 0 0 24px var(--c), inset 0 0 24px var(--c55); opacity: 0; pointer-events: none; }
+.stage.burst .st-rings i { animation: ring 1.5s cubic-bezier(.15,.7,.2,1) forwards; animation-delay: calc(var(--n) * .16s); }
+.stage.burst .st-rings i:nth-child(n+2):nth-child(-n+1) { display: none; }
+@keyframes ring { 0% { opacity: .9; transform: scale(.15); } 100% { opacity: 0; transform: scale(3.2); } }
+.st-bar { left: 0; right: 0; height: 0; background: #000; z-index: 4; }
+.st-bar.t { top: 0; } .st-bar.b { bottom: 0; }
+.stage.cine .st-bar { animation: barIn .8s cubic-bezier(.2,.8,.2,1) forwards; }
+.stage.cine.ready .st-bar { animation: barOut .9s ease forwards; }
+@keyframes barIn { to { height: 11vh; } } @keyframes barOut { from { height: 11vh; } to { height: 0; } }
+.stage.shake1 { animation: shake1 .5s ease-out; } .stage.shake2 { animation: shake2 .8s ease-out; }
+@keyframes shake1 { 20% { transform: translate(-3px, 2px); } 40% { transform: translate(3px, -2px); } 60% { transform: translate(-2px, 1px); } 80% { transform: translate(1px, -1px); } }
+@keyframes shake2 { 10% { transform: translate(-6px, 4px); } 25% { transform: translate(6px, -4px); } 40% { transform: translate(-5px, 3px); } 55% { transform: translate(4px, -3px); } 70% { transform: translate(-2px, 2px); } 85% { transform: translate(1px, -1px); } }
+
+/* сцена с машиной */
+.scene { left: 0; right: 0; top: 7%; height: 50%; display: flex; align-items: center; justify-content: center; perspective: 1100px; opacity: 0; touch-action: none; }
+.stage.show .scene, .stage.view .scene { animation: emerge 1.4s cubic-bezier(.16,1,.3,1) both; }
+.stage.view .scene { animation-duration: .7s; }
+@keyframes emerge { 0% { opacity: 0; transform: translateZ(-500px) scale(.6); filter: blur(18px) brightness(3); } 55% { filter: blur(0) brightness(1.4); } 100% { opacity: 1; transform: none; filter: none; } }
+.tilt { position: relative; width: min(90vw, 440px); transform-style: preserve-3d; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); will-change: transform; }
+.floor { position: absolute; left: -12%; right: -12%; bottom: -16%; height: 34%; transform: translateZ(-20px); pointer-events: none; }
+.floor i { position: absolute; border-radius: 50%; }
+.floor .disc { inset: 0; background: radial-gradient(closest-side, var(--c55), transparent 85%); }
+.floor .r1 { inset: 6% 6%; border: 2px solid var(--c); box-shadow: 0 0 26px var(--c), inset 0 0 26px var(--c55); opacity: .9; }
+.floor .r2 { inset: 22% 18%; border: 1.5px dashed var(--c); opacity: .6; animation: spin 22s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.shadow { position: absolute; left: 6%; right: 6%; bottom: -3%; height: 12%; background: radial-gradient(closest-side, rgba(0,0,0,.8), transparent); filter: blur(5px); transform: translateZ(0); }
+.carbox { position: relative; transform: translateZ(26px); }
+.carbox img { display: block; width: 100%; height: auto; filter: drop-shadow(0 16px 20px rgba(0,0,0,.55)); }
+.shine { position: absolute; inset: 0; -webkit-mask: var(--m) center / 100% 100% no-repeat; mask: var(--m) center / 100% 100% no-repeat; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.75) 49%, rgba(255,255,255,.15) 53%, transparent 64%); background-size: 320% 100%; background-position: var(--sx, 50%) 0; mix-blend-mode: soft-light; pointer-events: none; }
+.reflect { position: absolute; left: 0; right: 0; top: 100%; transform: translateZ(26px) scaleY(-1); transform-origin: top; opacity: .3; -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); filter: blur(1.2px); pointer-events: none; }
+.reflect img { display: block; width: 100%; }
+
+/* информация */
+.st-info { left: 0; right: 0; bottom: 0; padding: 40px 20px calc(18px + env(safe-area-inset-bottom)); text-align: center; background: linear-gradient(transparent, rgba(4,5,13,.88) 38%); opacity: 0; transform: translateY(34px); pointer-events: none; z-index: 5; }
+.stage.ready .st-info { opacity: 1; transform: none; pointer-events: auto; transition: opacity .6s ease, transform .7s cubic-bezier(.2,.9,.3,1); }
+.st-new { display: inline-block; background: linear-gradient(180deg, #ffd061, #ff9d00); color: #1a1000; font-size: 22px; line-height: 1.1; padding: 0 12px; border-radius: 12px; margin-bottom: 4px; }
+.st-rar { display: inline-flex; align-items: center; gap: 8px; color: var(--c); font-size: 28px; line-height: 1; text-shadow: 0 0 20px var(--c); letter-spacing: .5px; }
+.st-rar svg { width: 26px; height: 26px; }
+.st-info h2 { margin: 2px 0 0; font-size: 42px; line-height: 1; font-weight: 700; text-shadow: 0 2px 16px rgba(0,0,0,.6); }
+.st-price { font-size: 34px; color: var(--accent); margin: 4px 0 12px; line-height: 1; }
+.st-btns { display: flex; gap: 8px; max-width: 420px; margin: 0 auto; }
+.st-btns button { flex: 1; padding: 8px 6px; border: 1px solid var(--line); border-radius: 18px; font-family: var(--hand); font-weight: 700; font-size: 25px; line-height: 1.05; background: rgba(255,255,255,.14); backdrop-filter: blur(10px); color: #fff; }
+.st-btns button.sell { background: rgba(50,190,105,.72); border-color: rgba(120,255,170,.4); }
+.st-btns button:active { transform: scale(.96); }
+.st-hint { left: 0; right: 0; top: calc(env(safe-area-inset-top) + 14px); text-align: center; color: rgba(255,255,255,.55); font-size: 21px; opacity: 0; z-index: 5; pointer-events: none; }
+.stage.ready .st-hint { opacity: 1; transition: opacity 1s .6s; }
+.st-close { right: 14px; top: calc(env(safe-area-inset-top) + 12px); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.1); color: #fff; backdrop-filter: blur(8px); z-index: 6; display: flex; align-items: center; justify-content: center; padding: 0; opacity: 0; pointer-events: none; }
+.stage.ready .st-close { opacity: 1; pointer-events: auto; transition: opacity .5s; }
+.st-close svg { width: 20px; height: 20px; }
+
+/* модальное окно авторов фото */
+.modal { position: fixed; inset: 0; background: rgba(5,5,20,.6); backdrop-filter: blur(8px); z-index: 80; display: flex; align-items: center; justify-content: center; padding: 20px; animation: stIn .25s; }
+.credits { width: 100%; max-width: 380px; max-height: 80vh; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.credits h3 { margin: 0; font-size: 30px; }
+.credits p { margin: 0; font-size: 19px; color: var(--muted); line-height: 1.05; }
+.credits .list { overflow: auto; font-size: 17px; line-height: 1.05; color: rgba(255,255,255,.8); }
+.credits .list div { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.credits button { border: 0; border-radius: 14px; padding: 6px; background: rgba(255,255,255,.18); color: #fff; font-family: var(--hand); font-weight: 700; font-size: 24px; }
+
+/* ===== шрифты: системный по умолчанию, рукописный — для акцентов ===== */
+body { font-family: var(--sys); font-weight: 600; font-size: 15px; }
+button, .seg button, .chip, .pager button, .st-btns button, .credits button, .tabs button { font-family: var(--sys); font-weight: 700; }
+.brand .name, .pagehead, .spin-btn, .tabs button .lbl, .topisland span, .st-rar, .st-info h2, .st-price, .st-new, .st-hint, .credits h3 { font-family: var(--hand); font-weight: 700; }
+.brand .sub { font-size: 12px; } .bal { font-size: 18px; font-weight: 800; } .bal svg { width: 24px; height: 24px; }
+.pagehead small { font-size: 14px; font-family: var(--sys); font-weight: 600; }
+.item span { font-size: 12px; line-height: 1.1; } .hint { font-size: 14px; }
+.seg button { font-size: 16px; } .odds .o { font-size: 14px; } .hrow .n, .hrow .p { font-size: 14px; }
+.chip .cnt { font-size: 11px; line-height: 20px; } .sumline { font-size: 15px; }
+.car .nm { font-size: 14px; line-height: 1.1; height: 31px; } .car .pr { font-size: 16px; font-weight: 800; } .car .cntb { font-size: 12px; padding: 2px 7px; }
+.empty { font-size: 18px; } .pager .dots span { font-size: 15px !important; }
+.st-btns button { font-size: 16px; line-height: 1.15; } .st-new { font-size: 20px; }
+.credits p { font-size: 13px; line-height: 1.3; } .credits .list { font-size: 12px; line-height: 1.3; } .credits button { font-size: 16px; }
+.spin-btn { font-size: 30px; }
+
+/* появление редкости и цены, характеристики */
+@property --rc { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+.st-rar { --rc: #fff; color: var(--rc); text-shadow: 0 0 20px var(--rc); transition: --rc .45s ease, opacity .35s ease, transform .35s ease; opacity: 0; min-height: 30px; }
+.st-price { opacity: 0; transition: opacity .6s ease; display: inline-block; }
+.stage.rv .st-rar, .stage.rv .st-price { opacity: 1; }
+.st-rar.swap { opacity: .15 !important; transform: translateY(5px) scale(.96); }
+.st-price.done { animation: pricePop .6s cubic-bezier(.3,1.6,.5,1); text-shadow: 0 0 22px rgba(255,176,32,.7); }
+@keyframes pricePop { 40% { transform: scale(1.12); } }
+.st-info h2 { opacity: 0; transform: translateY(8px); transition: opacity .6s ease, transform .6s ease; }
+.stage.ready .st-info h2 { opacity: 1; transform: none; }
+.st-specbtn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: rgba(255,255,255,.1); backdrop-filter: blur(8px); color: #fff; border-radius: 999px; padding: 5px 14px 5px 10px; font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+.st-specbtn svg { width: 18px; height: 18px; } .stage.sp .st-specbtn { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.5); }
+.st-specs { max-width: 420px; margin: 0 auto; max-height: 0; opacity: 0; overflow: hidden; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; text-align: left; transition: max-height .6s cubic-bezier(.2,.9,.3,1), opacity .4s ease, margin .4s ease; }
+.stage.sp .st-specs { max-height: 260px; opacity: 1; margin-bottom: 12px; }
+.sp { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 6px 10px; backdrop-filter: blur(10px); }
+.sp.wide { grid-column: 1 / -1; } .sp small { display: block; font-size: 11px; color: rgba(255,255,255,.6); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+.sp em { font-style: normal; font-size: 15px; font-weight: 800; } .sp.note { background: none; border: 0; padding: 0 4px; text-align: center; font-size: 11px; color: rgba(255,255,255,.4); }
+.sp .bar { display: block; height: 4px; border-radius: 3px; background: rgba(255,255,255,.14); margin-top: 4px; overflow: hidden; }
+.sp .bar b { display: block; height: 100%; background: linear-gradient(90deg, var(--c), #fff); border-radius: 3px; }
+.scene { transition: transform .7s cubic-bezier(.2,.9,.3,1); }
+.stage.settled .scene { animation: none; opacity: 1; }
+.stage.sp .scene { transform: translateY(-12%) scale(.7); }
+</style>
+</head>
+<body>
+<div class="wall"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd061"/><stop offset="1" stop-color="#ff7a18"/></linearGradient>
+</defs></svg>
+
+<div id="app">
+  <header class="top glass">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" fill="none"><rect x="2" y="2" width="44" height="44" rx="14" fill="rgba(5,8,25,.7)" stroke="url(#lg)" stroke-width="2.6"/>
+        <path d="M9 29v-3c0-.8.3-1.5.9-2l3-2.4 1.8-3.4c.4-.8 1.2-1.3 2.1-1.3h8.4c.9 0 1.7.5 2.1 1.3l1.8 3.4 3 2.4c.6.5.9 1.2.9 2v3M9 29h30v2.5c0 .6-.4 1-1 1h-3M9 29v2.5c0 .6.4 1 1 1h3" stroke="url(#lg)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="15.5" cy="31.5" r="3" fill="#0b0d14" stroke="url(#lg)" stroke-width="2.4"/><circle cx="32.5" cy="31.5" r="3" fill="#0b0d14" stroke="url(#lg)" stroke-width="2.4"/>
+        <path d="M36 8l1.1 2.9L40 12l-2.9 1.1L36 16l-1.1-2.9L32 12l2.9-1.1z" fill="#fff"/></svg>
+      <div><div class="name">Car Case</div><div class="sub" id="sub"></div></div>
+    </div>
+    <div class="bal" id="balBox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 17V7h4a2.8 2.8 0 010 5.6h-4M8 14.5h6.5"/></svg><span id="bal">0</span></div>
+  </header>
+
+  <main>
+    <section class="page" id="tab-spin">
+      <div class="pagehead" data-i="spin"><span>Рулетка</span></div>
+      <div class="roulette glass"><div class="strip" id="strip"></div></div>
+      <button class="spin-btn" id="spinBtn"></button>
+      <div class="hint" id="spinHint"></div>
+      <div class="seg glass" id="spinSeg">
+        <button data-s="odds" class="on" data-i="odds"><span>Шансы</span></button>
+        <button data-s="hist" data-i="hist"><span>История</span></button>
+      </div>
+      <div class="panel"><div class="odds" id="odds"></div><div class="hist hide" id="hist"></div></div>
+    </section>
+    <section class="page hide" id="tab-coll">
+      <div class="pagehead" data-i="coll"><span>Мой гараж</span><small id="collCount"></small></div>
+      <div class="sumline glass" id="collTotal"></div>
+      <div class="chips" id="collChips"></div>
+      <div class="gridwrap"><div class="grid" id="collGrid"></div><div class="pager" id="collPager"></div></div>
+    </section>
+    <section class="page hide" id="tab-cat">
+      <div class="pagehead" data-i="cat"><span>Каталог</span><small id="catCount"></small><button class="infobtn" id="credBtn" aria-label="Фото"></button></div>
+      <div class="prog"><i id="catProg"></i></div>
+      <div class="chips" id="catChips"></div>
+      <div class="gridwrap"><div class="grid" id="catGrid"></div><div class="pager" id="catPager"></div></div>
+    </section>
+  </main>
+</div>
+
+<div class="topisland" id="topIsland"><span id="topText"></span></div>
+<div class="island-wrap"><nav class="tabs" id="tabs">
+  <button data-t="spin" class="on" data-i="spin"><span class="lbl">Рулетка</span></button>
+  <button data-t="coll" data-i="coll"><span class="lbl">Гараж</span></button>
+  <button data-t="cat" data-i="cat"><span class="lbl">Каталог</span></button>
+</nav></div>
+
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#0d1b4a'); tg.setBackgroundColor('#0d1b4a'); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch {} }
+
+const RC = { common: '#aab2c8', uncommon: '#4cd37b', rare: '#46a6ff', epic: '#b866ff', legendary: '#ffa534', mythic: '#ff4d7d' };
+const ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+const fmt = (n) => n.toLocaleString('ru-RU') + ' ₽';
+const $ = (id) => document.getElementById(id);
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- иконки ----------
+const IC = {
+  spin: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 3.5v6.3M12 14.2v6.3M3.5 12h6.3M14.2 12h6.3"/><path d="M12 1.2l-1.8 2.3h3.6z" fill="currentColor"/>',
+  coll: '<path d="M3 16.5v-3.2c0-.7.3-1.3.8-1.7l2-1.6 1.4-3c.3-.7 1-1.2 1.8-1.2h6c.8 0 1.5.5 1.8 1.2l1.4 3 2 1.6c.5.4.8 1 .8 1.7v3.2"/><path d="M3 16.5h18v1.7c0 .5-.4.8-.8.8H18M3 16.5v1.7c0 .5.4.8.8.8H6"/><circle cx="7.5" cy="17.3" r="2.2"/><circle cx="16.5" cy="17.3" r="2.2"/><path d="M6.5 11.5h11"/>',
+  cat: '<path d="M12 6.5C10 5 7 4.6 3.5 5v13c3.5-.4 6.5 0 8.5 1.5 2-1.5 5-1.9 8.5-1.5V5c-3.5-.4-6.5 0-8.5 1.5z"/><path d="M12 6.5v13"/><path d="M6.5 9h2.5M6.5 12h2.5M15 9h2.5M15 12h2.5"/>',
+  odds: '<circle cx="12" cy="12" r="9"/><path d="M12 12V3M12 12l6.4 6.4"/>',
+  hist: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  all: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+  common: '<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  uncommon: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  rare: '<path d="M6 4h12l4 6-10 11L2 10z"/><path d="M2 10h20M9 4l-2 6 5 11 5-11-2-6"/>',
+  epic: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  legendary: '<path d="M3 18L2 7l5 4 5-7 5 7 5-4-1 11zM3 21h18"/>',
+  mythic: '<path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8-6.1-3.4-6.1 3.4 1.4-6.8L2.2 9.1l6.9-.8z"/>',
+  prev: '<path d="M15 5l-7 7 7 7"/>', next: '<path d="M9 5l7 7-7 7"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', spec: '<path d="M3 17a9 9 0 1118 0"/><path d="M12 17l4.5-6"/><circle cx="12" cy="17" r="1.2"/><path d="M5.5 10.5l1 .6M12 6.5v1.2M18.5 10.5l-1 .6"/>', close: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const svg = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[name]}</svg>`;
+
+// ---------- состояние / API ----------
+let S = null, spinning = false;
+const view = { coll: { f: 'all', p: 0 }, cat: { f: 'all', p: 0 } };
+let hist = []; try { hist = JSON.parse(localStorage.getItem('cc_hist') || '[]'); } catch {}
+async function api(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (tg && tg.initData) headers['x-init-data'] = tg.initData;
+  else { const d = new URLSearchParams(location.search).get('dev'); if (d) headers['x-dev-user'] = d; }
+  const r = await fetch('/api/' + path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Ошибка'); return j;
+}
+let islandTimer;
+function toast(msg) {
+  const el = $('topIsland'); $('topText').textContent = msg;
+  el.style.setProperty('--w', Math.min(340, 60 + msg.length * 12) + 'px');
+  el.classList.add('show'); clearTimeout(islandTimer); islandTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+function haptic(t) { try { tg.HapticFeedback.impactOccurred(t || 'light'); } catch {} }
+function notify(t) { try { tg.HapticFeedback.notificationOccurred(t || 'success'); } catch {} }
+const carById = (id) => S.catalog.find((c) => c.id === id);
+const rLabel = (k) => S.rarity[k].label;
+const SM = (c) => `cars/${c.id}_s.webp`, BIG = (c) => `cars/${c.id}.webp`;
+const photo = (c, cls = '') => `<img class="${cls}" src="${SM(c)}" decoding="async" alt="" draggable="false">`;
+
+// ---------- шапка / рулетка ----------
+function renderHeader() {
+  const prev = $('bal').dataset.v; $('bal').textContent = S.balance.toLocaleString('ru-RU'); $('bal').dataset.v = S.balance;
+  if (prev && +prev !== S.balance) { const b = $('balBox'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  $('sub').textContent = `Прокрутов: ${S.spins} · ${S.seen.length}/${S.catalog.length}`;
+  const broke = S.balance < S.spinCost, bankrupt = broke && S.cars.length === 0;
+  $('spinBtn').innerHTML = svg('spin') + `<span>${bankrupt ? 'Начать заново' : 'Крутить за ' + fmt(S.spinCost)}</span>`;
+  $('spinBtn').disabled = spinning || (broke && !bankrupt);
+  $('spinHint').textContent = bankrupt ? 'Деньги и машины закончились' : broke ? 'Не хватает денег — продай машину в гараже' : '';
+}
+function renderOdds() {
+  const total = Object.values(S.rarity).reduce((s, r) => s + r.weight, 0);
+  $('odds').innerHTML = ORDER.map((k) => `<div class="o glass" style="--c:${RC[k]}">${svg(k)}<span>${rLabel(k)}</span><b>${(S.rarity[k].weight / total * 100).toFixed(2).replace(/\.?0+$/, '')}%</b></div>`).join('');
+}
+function renderHist() {
+  $('hist').innerHTML = hist.length ? hist.map((h) => { const c = carById(h); if (!c) return ''; return `<div class="hrow glass" style="--c:${RC[c.rarity]}">${photo(c)}<div class="n">${c.name}</div><div class="p">${fmt(c.price)}</div></div>`; }).join('')
+    : '<div class="empty" style="padding-top:20px">Пока пусто — крути рулетку!</div>';
+}
+const itemHtml = (c) => `<div class="item" style="--c:${RC[c.rarity]}"><img src="${SM(c)}" alt="" draggable="false"><span>${c.name}</span></div>`;
+const ITEM_W = 130;
+function runRoulette(winner) {
+  return new Promise((resolve) => {
+    const strip = $('strip'), N = 45, WIN = 38, items = [];
+    for (let i = 0; i < N; i++) items.push(i === WIN ? winner : S.catalog[Math.floor(Math.random() * S.catalog.length)]);
+    strip.style.transition = 'none'; strip.style.transform = 'translateX(0)'; strip.innerHTML = items.map(itemHtml).join('');
+    const w = strip.parentElement.clientWidth, target = WIN * ITEM_W + ITEM_W / 2 - w / 2 + (Math.random() * 60 - 30);
+    strip.getBoundingClientRect();
+    strip.style.transition = 'transform 4.2s cubic-bezier(.12,.7,.1,1)'; strip.style.transform = `translateX(${-target}px)`;
+    const tick = setInterval(() => haptic('light'), 180);
+    setTimeout(() => { clearInterval(tick); strip.children[WIN].classList.add('hit'); resolve(); }, 4300);
+  });
+}
+async function doSpin() {
+  if (spinning) return;
+  if (S.balance < S.spinCost && S.cars.length === 0) { S = (await api('reset')).state; renderAll(); return toast('Новый старт: 100 000 ₽'); }
+  spinning = true; renderHeader();
+  try {
+    const r = await api('spin'); S = r.state;
+    const pre = new Image(); pre.src = BIG(r.car); pre.decode().catch(() => {});
+    await runRoulette(r.car); await wait(450);
+    spinning = false;
+    hist.unshift(r.car.id); hist = hist.slice(0, 8); try { localStorage.setItem('cc_hist', JSON.stringify(hist)); } catch {}
+    renderAll(); openShowcase(r.car, { win: true, isNew: r.isNew });
+  } catch (e) { spinning = false; renderAll(); toast(e.message); }
+}
+async function sell(id, all) {
+  try { const r = await api('sell', { carId: id, all }); S = r.state; renderAll(); haptic('light'); toast('+ ' + fmt(r.gain)); return true; }
+  catch (e) { toast(e.message); return false; }
+}
+
+// ---------- карточки / пагинация ----------
+function carCard(c, { count, locked } = {}) {
+  return `<div class="car glass ${locked ? 'locked' : ''}" ${locked ? '' : `data-open="${c.id}"`} style="--c:${RC[c.rarity]}">
+    <div class="spot"></div>${count > 1 ? `<span class="cntb">×${count}</span>` : ''}
+    ${photo(c)}<div class="nm">${locked ? '???' : c.name}</div>
+    <div class="meta"><div class="rr">${svg(c.rarity)}</div><div class="pr">${fmt(c.price)}</div></div></div>`;
+}
+function chipsHtml(key, counts) {
+  const cur = view[key].f;
+  const mk = (k, ic, n) => `<button class="chip ${cur === k ? 'on' : ''}" data-chip="${key}:${k}" style="--c:${k === 'all' ? '#ffffff' : RC[k]}">${svg(ic)}${n ? `<span class="cnt">${n}</span>` : ''}</button>`;
+  return mk('all', 'all', counts.all) + ORDER.map((k) => mk(k, k, counts[k])).join('');
+}
+function pageSize(gridEl) { const h = gridEl.clientHeight, ch = 140, gap = 8; return Math.max(2, Math.min(4, Math.floor((h + gap) / (ch + gap)))) * 2; }
+function renderPager(key, pages) {
+  const v = view[key], el = $(key + 'Pager');
+  el.innerHTML = `<button data-pg="${key}:-1" ${v.p <= 0 ? 'disabled' : ''}>${svg('prev')}</button>
+    <div class="dots">${pages > 7 ? `<span style="font-size:22px">${v.p + 1} / ${pages}</span>` : Array.from({ length: pages }, (_, i) => `<i class="${i === v.p ? 'on' : ''}"></i>`).join('')}</div>
+    <button data-pg="${key}:1" ${v.p >= pages - 1 ? 'disabled' : ''}>${svg('next')}</button>`;
+  el.classList.toggle('hide', pages <= 1);
+}
+function renderGrid(key, items, mapper, emptyHtml, anim) {
+  const grid = $(key + 'Grid'), v = view[key], size = pageSize(grid), pages = Math.max(1, Math.ceil(items.length / size));
+  v.p = Math.min(v.p, pages - 1);
+  grid.innerHTML = items.length ? items.slice(v.p * size, v.p * size + size).map(mapper).join('') : emptyHtml;
+  grid.classList.remove('flip-n', 'flip-p'); if (anim) { void grid.offsetWidth; grid.classList.add(anim); }
+  renderPager(key, pages);
+}
+function renderColl(anim) {
+  const counts = {}; S.cars.forEach((id) => counts[id] = (counts[id] || 0) + 1);
+  const uniq = Object.keys(counts).map((id) => carById(+id)).sort((a, b) => b.price - a.price);
+  const rc = { all: S.cars.length }; ORDER.forEach((k) => rc[k] = S.cars.filter((id) => carById(id).rarity === k).length);
+  $('collChips').innerHTML = chipsHtml('coll', rc);
+  $('collCount').textContent = `${S.cars.length} шт.`;
+  $('collTotal').innerHTML = `<span>Стоимость гаража: <b>${fmt(S.cars.reduce((s, id) => s + carById(id).price, 0))}</b></span>`;
+  const f = view.coll.f;
+  renderGrid('coll', uniq.filter((c) => f === 'all' || c.rarity === f), (c) => carCard(c, { count: counts[c.id] }),
+    `<div class="empty">${svg('coll')}Здесь пока пусто<br>Крути рулетку!</div>`, anim);
+}
+function renderCat(anim) {
+  const owned = new Set(S.seen);
+  const rc = { all: S.seen.length }; ORDER.forEach((k) => rc[k] = S.catalog.filter((c) => c.rarity === k && owned.has(c.id)).length);
+  $('catChips').innerHTML = chipsHtml('cat', rc);
+  $('catCount').textContent = `${S.seen.length}/${S.catalog.length}`;
+  $('catProg').style.width = (S.seen.length / S.catalog.length * 100) + '%';
+  const f = view.cat.f;
+  renderGrid('cat', S.catalog.filter((c) => f === 'all' || c.rarity === f).sort((a, b) => a.price - b.price), (c) => carCard(c, { locked: !owned.has(c.id) }), '', anim);
+}
+function renderAll() { if (!S) return; renderHeader(); renderHist(); renderColl(); renderCat(); }
+
+// ========================================================
+// СЦЕНА ВЫИГРЫША / 3D-ВИТРИНА
+// ========================================================
+const FX = {
+  common:    { pre: 700,  flash: 0,   rings: 0, beam: 0,   streak: 0, warp: 0,  embers: 0,  dust: 0,  shake: 0, cine: 0, core: .45, hap: ['light'] },
+  uncommon:  { pre: 950,  flash: .25, rings: 1, beam: 0,   streak: 0, warp: 0,  embers: 0,  dust: 14, shake: 0, cine: 0, core: .55, hap: ['medium'] },
+  rare:      { pre: 1300, flash: .45, rings: 1, beam: .3,  streak: 1, warp: 0,  embers: 0,  dust: 22, shake: 0, cine: 0, core: .65, hap: ['medium', 'success'] },
+  epic:      { pre: 1800, flash: .65, rings: 2, beam: .55, streak: 1, warp: 26, embers: 0,  dust: 30, shake: 1, cine: 0, core: .8,  hap: ['rigid', 'success'] },
+  legendary: { pre: 2400, flash: .85, rings: 3, beam: .8,  streak: 1, warp: 48, embers: 34, dust: 24, shake: 1, cine: 1, core: .95, hap: ['heavy', 'heavy', 'success'] },
+  mythic:    { pre: 3200, flash: 1,   rings: 4, beam: 1,   streak: 1, warp: 80, embers: 56, dust: 30, shake: 2, cine: 1, core: 1.1, hap: ['heavy', 'heavy', 'heavy', 'success'], beat: 1 },
+};
+const FX_VIEW = { pre: 0, flash: 0, rings: 0, beam: .35, streak: 0, warp: 0, embers: 0, dust: 18, shake: 0, cine: 0, core: 0, hap: [] };
+let stageEl = null;
+
+
+function specsHtml(car) {
+  const sp = car.specs, bar = (v) => `<i class="bar"><b style="width:${Math.round(Math.max(.04, Math.min(1, v)) * 100)}%"></b></i>`;
+  const acc = sp.acc ? String(sp.acc).replace('.', ',') + ' с' : '—';
+  return `<div class="sp wide"><small>Год · двигатель</small><em>${sp.year} · ${sp.engine}</em></div>
+    <div class="sp"><small>Мощность</small><em>${sp.hp} л.с.</em>${bar(Math.sqrt(sp.hp / 1500))}</div>
+    <div class="sp"><small>Разгон 0–100</small><em>${acc}</em>${bar(sp.acc ? (22 - sp.acc) / 19.6 : 0)}</div>
+    <div class="sp"><small>Макс. скорость</small><em>${sp.vmax} км/ч</em>${bar((sp.vmax - 100) / 380)}</div>
+    <div class="sp"><small>Привод</small><em>${sp.drive}</em></div>
+    <div class="sp wide note">Данные приблизительные</div>`;
+}
+
+function openShowcase(car, o = {}) {
+  if (stageEl) return;
+  const win = !!o.win, fx = win ? FX[car.rarity] : { ...FX_VIEW, embers: ['legendary', 'mythic'].includes(car.rarity) ? 18 : 0 };
+  const col = RC[car.rarity], timers = [];
+  const owned = S.cars.filter((id) => id === car.id).length;
+  const st = stageEl = document.createElement('div');
+  st.className = 'stage ' + (win ? 'pre' : 'view') + (fx.cine ? ' cine' : '') + (fx.beat ? ' beat' : '') + (fx.streak ? ' has-streak' : '');
+  st.style.cssText = `--c:${col};--c40:${rgba(col, .4)};--c55:${rgba(col, .55)};--pre:${fx.pre}ms;--coreS:${fx.core};--flash:${fx.flash};--beam:${fx.beam}`;
+  const rings = Array.from({ length: fx.rings }, (_, i) => `<i style="--n:${i}"></i>`).join('');
+  const sell1 = Math.round(car.price * S.sellRatio);
+  let buttons;
+  if (win) buttons = `<button data-a="keep">Оставить</button><button class="sell" data-a="sell">Продать<br>${fmt(sell1)}</button>`;
+  else if (owned) buttons = `<button data-a="keep">Закрыть</button><button class="sell" data-a="sell">Продать<br>${fmt(sell1)}</button>${owned > 1 ? `<button class="sell" data-a="sellall">Все ×${owned}<br>${fmt(sell1 * owned)}</button>` : ''}`;
+  else buttons = `<button data-a="keep">Закрыть</button>`;
+  st.innerHTML = `
+    <div class="st-bg"></div><div class="st-beams"></div><div class="st-core"></div><canvas class="st-fx"></canvas>
+    <div class="st-streak"></div><div class="st-rings">${rings}</div><div class="st-vig"></div>
+    <div class="scene"><div class="tilt" id="tilt">
+      <div class="floor"><i class="disc"></i><i class="r1"></i><i class="r2"></i></div>
+      <div class="shadow"></div>
+      <div class="carbox"><img src="${BIG(car)}" alt="" draggable="false"><div class="shine" style="--m:url(${BIG(car)})"></div></div>
+      <div class="reflect"><img src="${BIG(car)}" alt=""></div>
+    </div></div>
+    <div class="st-bar t"></div><div class="st-bar b"></div>
+    <div class="st-hint">Потяни, чтобы повернуть</div>
+    <button class="st-close" data-a="keep" aria-label="Закрыть">${svg('close')}</button>
+    <div class="st-info">${win && o.isNew ? '<div class="st-new">Новая в коллекции!</div><br>' : ''}
+      <div class="st-rar" id="stRar"></div><h2>${car.name}</h2><div class="st-price" id="stPrice"></div>
+      <button class="st-specbtn" data-a="specs">${svg('spec')}<span>Характеристики</span></button>
+      <div class="st-specs">${specsHtml(car)}</div>
+      <div class="st-btns">${buttons}</div></div>
+    <div class="st-flash"></div>`;
+  document.body.appendChild(st);
+
+  // --- частицы ---
+  const cv = st.querySelector('canvas'), ctx = cv.getContext('2d'), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr, cx = W / 2, cy = H * .42;
+  const warp = Array.from({ length: fx.warp }, () => ({ a: Math.random() * 6.283, r: (.55 + Math.random() * .6) * Math.hypot(W, H) / 2, v: .4 + Math.random() * .9, l: .05 + Math.random() * .1 }));
+  const dust = Array.from({ length: fx.dust }, () => ({ x: Math.random() * W, y: Math.random() * H, s: (.6 + Math.random() * 1.4) * dpr, vy: -(.1 + Math.random() * .25) * dpr, p: Math.random() * 6.28 }));
+  const embers = []; let mode = win ? 'pre' : 'idle', tMode = performance.now(), raf = 0, last = performance.now();
+  const emberCol = car.rarity === 'mythic' ? ['255,90,130', '255,170,120', '255,230,200'] : ['255,190,80', '255,150,40', '255,235,170'];
+  function spawnEmber() { embers.push({ x: Math.random() * W, y: H + 10, vy: -(.5 + Math.random() * 1.2) * dpr, vx: (Math.random() - .5) * .4 * dpr, s: (.8 + Math.random() * 1.8) * dpr, life: 0, max: 4 + Math.random() * 4, c: emberCol[(Math.random() * 3) | 0], p: Math.random() * 6.28 }); }
+  function loop(now) {
+    const dt = Math.min(50, now - last) / 16.7; last = now; ctx.clearRect(0, 0, W, H);
+    const tm = now - tMode;
+    if (mode === 'pre' || mode === 'burst') {
+      const k = mode === 'pre' ? Math.min(1, tm / fx.pre) : 1;
+      ctx.lineCap = 'round';
+      for (const w of warp) {
+        if (mode === 'pre') { w.r -= w.v * dt * (4 + 36 * k * k) * dpr; if (w.r < 30 * dpr) w.r = (.55 + Math.random() * .6) * Math.hypot(W, H) / 2; }
+        else { w.r += w.v * dt * 38 * dpr; }
+        const a = mode === 'pre' ? (.15 + .75 * k) : Math.max(0, 1 - tm / 700), len = w.l * w.r * (mode === 'pre' ? .6 + k : 1.6);
+        if (a <= 0) continue;
+        ctx.strokeStyle = rgba(col, a * .9); ctx.lineWidth = (1 + k * 1.4) * dpr;
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(w.a) * w.r, cy + Math.sin(w.a) * w.r); ctx.lineTo(cx + Math.cos(w.a) * (w.r + len), cy + Math.sin(w.a) * (w.r + len)); ctx.stroke();
+      }
+    }
+    if (mode !== 'pre') {
+      for (const d of dust) { d.y += d.vy * dt; d.p += .02 * dt; if (d.y < -10) { d.y = H + 10; d.x = Math.random() * W; } ctx.fillStyle = `rgba(255,255,255,${.12 + .22 * Math.abs(Math.sin(d.p))})`; ctx.beginPath(); ctx.arc(d.x, d.y, d.s, 0, 6.283); ctx.fill(); }
+      if (fx.embers && Math.random() < fx.embers / 700 * dt * 4) spawnEmber();
+      for (let i = embers.length - 1; i >= 0; i--) {
+        const e = embers[i]; e.life += dt / 60; e.p += .05 * dt; e.x += (e.vx + Math.sin(e.p) * .35 * dpr) * dt; e.y += e.vy * dt;
+        const a = Math.min(1, e.life * 2) * Math.max(0, 1 - e.life / e.max); if (a <= 0 || e.y < -10) { embers.splice(i, 1); continue; }
+        ctx.fillStyle = `rgba(${e.c},${a * .9})`; ctx.shadowColor = `rgba(${e.c},1)`; ctx.shadowBlur = 8 * dpr; ctx.beginPath(); ctx.arc(e.x, e.y, e.s, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
+      }
+    }
+    raf = requestAnimationFrame(loop);
+  }
+  raf = requestAnimationFrame(loop);
+
+  // --- 3D-наклон / блик ---
+  const tilt = st.querySelector('#tilt'), shine = st.querySelector('.shine');
+  let closed = false, priceRaf = 0;
+  let ry = 0, rx = 0, tRy = 0, tRx = 0, drag = false, px = 0, py = 0, dRy = 0, dRx = 0, ready = false;
+  const scene = st.querySelector('.scene');
+  scene.addEventListener('pointerdown', (e) => { drag = true; px = e.clientX; py = e.clientY; try { scene.setPointerCapture(e.pointerId); } catch {} });
+  scene.addEventListener('pointermove', (e) => { if (!drag) return; dRy = Math.max(-34, Math.min(34, dRy + (e.clientX - px) * .28)); dRx = Math.max(-12, Math.min(12, dRx - (e.clientY - py) * .14)); px = e.clientX; py = e.clientY; });
+  const up = () => { drag = false; }; scene.addEventListener('pointerup', up); scene.addEventListener('pointercancel', up);
+  let t0 = performance.now(), raf2 = 0;
+  (function anim(now) {
+    const t = (now - t0) / 1000;
+    if (!drag) { dRy *= .94; dRx *= .94; }
+    tRy = Math.sin(t * .7) * 9 + dRy; tRx = -2 + Math.cos(t * .5) * 2 + dRx;
+    ry += (tRy - ry) * .09; rx += (tRx - rx) * .09;
+    tilt.style.setProperty('--ry', ry.toFixed(2) + 'deg'); tilt.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+    shine.style.setProperty('--sx', (50 - ry * 3.2 + Math.sin(t * .9) * 55).toFixed(1) + '%');
+    raf2 = requestAnimationFrame(anim);
+  })(t0);
+
+  // --- хронология ---
+  const at = (ms, f) => timers.push(setTimeout(f, ms));
+  const burst = () => {
+    if (!st.classList.contains('pre')) return;
+    st.classList.remove('pre', 'beat'); st.classList.add('burst', 'show'); mode = 'burst'; tMode = performance.now();
+    if (fx.shake) { st.classList.add('shake' + fx.shake); }
+    notify('success'); haptic(['epic', 'legendary', 'mythic'].includes(car.rarity) ? 'heavy' : 'medium');
+    at(700, () => { mode = 'idle'; }); at(1500, ready1);
+  };
+  const ready1 = () => { ready = true; st.classList.add('ready', 'settled'); at(win ? 350 : 150, reveal); };
+  const reveal = () => {
+    if (closed) return;
+    const rar = st.querySelector('#stRar'), pr = st.querySelector('#stPrice'), fast = !win;
+    const setR = (k) => { rar.style.setProperty('--rc', RC[k]); rar.innerHTML = svg(k) + `<span>${rLabel(k)}</span>`; };
+    pr.textContent = fmt(car.price); pr.style.minWidth = pr.offsetWidth + 'px'; pr.textContent = fmt(0);
+    const steps = fast ? [car.rarity] : ORDER.slice(0, ORDER.indexOf(car.rarity) + 1);
+    setR(steps[0]); st.classList.add('rv');
+    const stepMs = steps.length > 1 ? Math.max(230, Math.min(420, 1400 / steps.length)) : 0;
+    steps.slice(1).forEach((k, i) => at(500 + stepMs * (i + 1), () => { rar.classList.add('swap'); at(110, () => { setR(k); rar.classList.remove('swap'); haptic('light'); }); }));
+    const startPrice = 500 + stepMs * (steps.length - 1) + 250;
+    const dur = fast ? 700 : Math.round(1100 + Math.min(1500, Math.log10(car.price) * 190));
+    at(startPrice, () => {
+      const t0 = performance.now(); let lastTick = 0;
+      const tick = (now) => {
+        if (closed) return;
+        const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        pr.textContent = fmt(p >= 1 ? car.price : Math.round(car.price * e));
+        if (!fast && p - lastTick > .14 && p < 1) { lastTick = p; haptic('light'); }
+        if (p < 1) priceRaf = requestAnimationFrame(tick); else { pr.classList.add('done'); if (!fast) notify('success'); }
+      };
+      priceRaf = requestAnimationFrame(tick);
+    });
+  };
+  if (win) {
+    const hs = fx.hap; hs.forEach((h, i) => { if (h !== 'success') at((fx.pre / (hs.length)) * i, () => haptic(h)); });
+    if (fx.beat) [.3, .55, .8].forEach((p) => at(fx.pre * p, () => haptic('heavy')));
+    at(fx.pre, burst);
+    st.addEventListener('click', (e) => { if (st.classList.contains('pre') && !e.target.closest('button')) { timers.forEach(clearTimeout); burst(); } });
+  } else { st.classList.add('show'); mode = 'idle'; at(500, ready1); }
+
+  // --- закрытие / кнопки ---
+  const close = () => { closed = true; cancelAnimationFrame(priceRaf); cancelAnimationFrame(raf); cancelAnimationFrame(raf2); timers.forEach(clearTimeout); st.classList.add('out'); setTimeout(() => { st.remove(); if (stageEl === st) stageEl = null; }, 300); };
+  st.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-a]'); if (!b || !ready) return;
+    const a = b.dataset.a;
+    if (a === 'specs') { st.classList.toggle('sp'); haptic('light'); return; }
+    if (a === 'keep') return close();
+    close(); await sell(car.id, a === 'sellall');
+  });
+}
+
+// ---------- события ----------
+$('spinBtn').onclick = doSpin;
+const TABS = ['spin', 'coll', 'cat']; let curTab = 'spin';
+document.querySelectorAll('[data-i]').forEach((el) => el.insertAdjacentHTML('afterbegin', svg(el.dataset.i)));
+$('credBtn').innerHTML = svg('info');
+document.querySelectorAll('.tabs button').forEach((b) => b.onclick = (ev) => {
+  const t = b.dataset.t; if (t === curTab) return;
+  const dir = TABS.indexOf(t) > TABS.indexOf(curTab) ? 'in-right' : 'in-left';
+  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  TABS.forEach((n) => { const sec = $('tab-' + n); sec.classList.remove('in-right', 'in-left'); sec.classList.toggle('hide', n !== t); });
+  const sec = $('tab-' + t); void sec.offsetWidth; sec.classList.add(dir);
+  const r = b.getBoundingClientRect(), rp = document.createElement('i'); rp.className = 'ripple';
+  rp.style.left = (ev.clientX - r.left) + 'px'; rp.style.top = (ev.clientY - r.top) + 'px'; b.appendChild(rp); setTimeout(() => rp.remove(), 650);
+  const bar = $('tabs'); bar.classList.remove('jelly'); void bar.offsetWidth; bar.classList.add('jelly');
+  haptic('light'); curTab = t; if (S) { renderColl(); renderCat(); }
+});
+document.querySelectorAll('#spinSeg button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('#spinSeg button').forEach((x) => x.classList.toggle('on', x === b));
+  $('odds').classList.toggle('hide', b.dataset.s !== 'odds'); $('hist').classList.toggle('hide', b.dataset.s !== 'hist'); haptic('light');
+});
+function go(key, d) { const v = view[key], np = v.p + d; if (np < 0) return; v.p = np; (key === 'coll' ? renderColl : renderCat)(d > 0 ? 'flip-n' : 'flip-p'); haptic('light'); }
+async function showCredits() {
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="credits glass"><h3>Фото автомобилей</h3><p>Wikimedia Commons, лицензии CC BY / CC BY-SA. Фон удалён, добавлены эффекты.</p><div class="list" id="credList">Загрузка…</div><button>Закрыть</button></div>`;
+  document.body.appendChild(m); m.onclick = (e) => { if (e.target === m || e.target.tagName === 'BUTTON') m.remove(); };
+  try { const c = await (await fetch('credits.json')).json(); $('credList').innerHTML = Object.keys(c).map((id) => { const x = c[id], car = carById(+id); return `<div>${car ? car.name : id} — ${x.artist || 'автор не указан'} (${x.license})</div>`; }).join(''); } catch { $('credList').textContent = 'Не удалось загрузить'; }
+}
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-open]'); if (open) return openShowcase(carById(+open.dataset.open));
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'credBtn') return showCredits();
+  if (t.dataset.chip) { const [k, f] = t.dataset.chip.split(':'); view[k].f = f; view[k].p = 0; (k === 'coll' ? renderColl : renderCat)('flip-n'); haptic('light'); }
+  else if (t.dataset.pg) { const [k, d] = t.dataset.pg.split(':'); go(k, +d); }
+});
+let sx = 0, sk = null;
+document.addEventListener('touchstart', (e) => { const g = e.target.closest('.grid'); sk = g ? g.id.replace('Grid', '') : null; sx = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', (e) => { if (!sk) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 60) go(sk, dx < 0 ? 1 : -1); sk = null; }, { passive: true });
+window.addEventListener('resize', () => { if (S) { renderColl(); renderCat(); } });
+
+(async () => {
+  try {
+    S = (await api('state')).state;
+    renderOdds(); renderAll();
+    $('strip').innerHTML = S.catalog.slice(0, 12).map(itemHtml).join('');
+    setTimeout(() => S.catalog.forEach((c) => { new Image().src = SM(c); }), 600); // прогрев превью
+  } catch (e) { document.querySelector('main').innerHTML = `<div class="empty">${e.message}</div>`; }
+})();
+</script>
+</body>
+</html>
