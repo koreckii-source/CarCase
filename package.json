@@ -1,0 +1,10 @@
+{
+  "name": "car-case",
+  "version": "1.0.0",
+  "description": "Car Case — Telegram-бот и Mini App с рулеткой автомобилей",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}
