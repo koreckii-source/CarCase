@@ -222,13 +222,17 @@ server.listen(PORT, () => {
 });
 
 // ---------- Telegram-бот (long polling) ----------
-async function tg(method, payload) {
-  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return r.json();
+async function tg(method, payload, timeoutMs = 20000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctl.signal,
+    });
+    return await r.json();
+  } finally { clearTimeout(t); }
 }
 
 async function startBot() {
@@ -250,7 +254,7 @@ async function startBot() {
   let offset = 0;
   for (;;) {
     try {
-      const r = await tg('getUpdates', { offset, timeout: 30, allowed_updates: ['message'] });
+      const r = await tg('getUpdates', { offset, timeout: 15, allowed_updates: ['message'] }, 30000);
       for (const upd of r.result || []) {
         offset = upd.update_id + 1;
         const m = upd.message;
@@ -267,7 +271,7 @@ async function startBot() {
         }
       }
     } catch (e) {
-      console.error('polling error:', e.message);
+      console.error('polling error:', e.name === 'AbortError' ? 'таймаут' : e.message, e.cause ? (e.cause.code || e.cause.message) : '');
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
