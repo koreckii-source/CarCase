@@ -198,7 +198,7 @@ section.in-left { animation: inL .5s cubic-bezier(.2,.9,.3,1) both; }
 .carbox { position: relative; transform: translateZ(26px); }
 .carbox img { display: block; width: 100%; height: auto; filter: drop-shadow(0 16px 20px rgba(0,0,0,.55)); }
 .shine { position: absolute; inset: 0; -webkit-mask: var(--m) center / 100% 100% no-repeat; mask: var(--m) center / 100% 100% no-repeat; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.75) 49%, rgba(255,255,255,.15) 53%, transparent 64%); background-size: 320% 100%; background-position: var(--sx, 50%) 0; mix-blend-mode: soft-light; pointer-events: none; }
-.reflect { position: absolute; left: 0; right: 0; top: 100%; transform: translateZ(26px) scaleY(-1); transform-origin: top; opacity: .3; -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); filter: blur(1.2px); pointer-events: none; }
+.reflect { position: absolute; left: 0; right: 0; top: 100%; transform: translateZ(26px) scaleY(-1); transform-origin: 50% 50%; opacity: .3; -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 52%); filter: blur(1.2px); pointer-events: none; }
 .reflect img { display: block; width: 100%; }
 
 /* информация */
@@ -265,6 +265,21 @@ button, .seg button, .chip, .pager button, .st-btns button, .credits button, .ta
 .scene { transition: transform .7s cubic-bezier(.2,.9,.3,1); }
 .stage.settled .scene { animation: none; opacity: 1; }
 .stage.sp .scene { transform: translateY(-12%) scale(.7); }
+
+/* ===== тень под машиной (на земле) вместо обводки позади силуэта ===== */
+.pw { position: relative; flex: none; }
+.pw img { position: relative; z-index: 1; display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: none !important; }
+.pw::after { content: ''; position: absolute; left: 4%; right: 4%; bottom: -4px; height: 14px; z-index: 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.72), rgba(0,0,0,.28) 60%, transparent); filter: blur(2.5px); }
+.item .pw { width: 104px; height: 58px; margin: 0 auto; }
+.car .pw { width: 100%; height: 62px; margin: 2px 0 4px; }
+.hrow .pw { width: 62px; height: 32px; }
+.hrow .pw::after { height: 7px; bottom: -2px; }
+.car.locked .pw::after { display: none; }
+.car.locked .pw img { filter: brightness(0) opacity(.45) !important; }
+/* витрина: контактная тень и более заметное отражение */
+.carbox img { filter: none !important; }
+.shadow { left: 1%; right: 1%; bottom: -7%; height: 24%; background: radial-gradient(closest-side, rgba(0,0,0,.9), rgba(0,0,0,.5) 55%, transparent); filter: blur(7px); }
+.reflect { opacity: .42; -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.95), transparent 46%); mask-image: linear-gradient(to top, rgba(0,0,0,.95), transparent 46%); }
 </style>
 </head>
 <body>
@@ -386,7 +401,7 @@ function notify(t) { try { tg.HapticFeedback.notificationOccurred(t || 'success'
 const carById = (id) => S.catalog.find((c) => c.id === id);
 const rLabel = (k) => S.rarity[k].label;
 const SM = (c) => `cars/${c.id}_s.webp`, BIG = (c) => `cars/${c.id}.webp`;
-const photo = (c, cls = '') => `<img class="${cls}" src="${SM(c)}" decoding="async" alt="" draggable="false">`;
+const photo = (c) => `<div class="pw"><img src="${SM(c)}" decoding="async" alt="" draggable="false"></div>`;
 
 // ---------- шапка / рулетка ----------
 function renderHeader() {
@@ -406,7 +421,7 @@ function renderHist() {
   $('hist').innerHTML = hist.length ? hist.map((h) => { const c = carById(h); if (!c) return ''; return `<div class="hrow glass" style="--c:${RC[c.rarity]}">${photo(c)}<div class="n">${c.name}</div><div class="p">${fmt(c.price)}</div></div>`; }).join('')
     : '<div class="empty" style="padding-top:20px">Пока пусто — крути рулетку!</div>';
 }
-const itemHtml = (c) => `<div class="item" style="--c:${RC[c.rarity]}"><img src="${SM(c)}" alt="" draggable="false"><span>${c.name}</span></div>`;
+const itemHtml = (c) => `<div class="item" style="--c:${RC[c.rarity]}"><div class="pw"><img src="${SM(c)}" alt="" draggable="false"></div><span>${c.name}</span></div>`;
 const ITEM_W = 130;
 function runRoulette(winner) {
   return new Promise((resolve) => {
