@@ -6,6 +6,8 @@
 <title>Car Case</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
+@font-face { font-family: 'Unbounded'; src: url(fonts/unbounded-500.ttf) format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Unbounded'; src: url(fonts/unbounded-700.ttf) format('truetype'); font-weight: 700; font-display: swap; }
 @font-face { font-family: 'Inter'; src: url(fonts/inter-500.ttf) format('truetype'); font-weight: 500; font-display: swap; }
 @font-face { font-family: 'Inter'; src: url(fonts/inter-700.ttf) format('truetype'); font-weight: 700; font-display: swap; }
 @font-face { font-family: 'Cormorant Garamond'; src: url(fonts/corm-600.ttf) format('truetype'); font-weight: 600; font-display: swap; }
@@ -271,6 +273,50 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
 .car .pw::after { left: 3%; right: 3%; bottom: -7px; height: 17px; border-radius: 50%; background: rgba(255,255,255,.85); border: 1px solid rgba(176,141,87,.85); box-shadow: 0 4px 7px rgba(19,19,19,.22); filter: none; }
 .car .gl { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.6) 50%, transparent 60%); background-size: 250% 100%; background-position: 160% 0; animation: glass 7s ease-in-out infinite; animation-delay: var(--d, 0s); }
 .car.locked .gl, .car.locked::before { display: none; }
+
+/* ================= ЭЛИТНЫЙ САЛОН: шрифт, подсветка, прозрачные надписи ================= */
+:root { --wide: 'Unbounded', 'Inter', Arial, sans-serif; }
+.pagehead { font-family: var(--wide); font-weight: 700; font-size: 21px; letter-spacing: .16em; }
+.brand .name { font-family: var(--wide); font-weight: 700; font-size: 14px; letter-spacing: .32em; }
+.bal, .btn-main .bp, .btn-alt .bp, .car .pr, .st-price, .sumline b, .odds .o b, .hrow .p, .sum .r .p { font-family: var(--wide); font-weight: 500; letter-spacing: .02em; }
+.btn-main .bl { font-family: var(--wide); font-weight: 700; letter-spacing: .24em; font-size: 13px; }
+.btn-alt .bl { font-family: var(--wide); font-weight: 700; font-size: 20px; }
+.tabs button .lbl, .seg button, .st-btns button, .st-tools button, .sheet button { font-family: var(--wide); font-weight: 500; letter-spacing: .14em; font-size: 10.5px; }
+.st-info h2 { letter-spacing: .01em; }
+.car .pr { font-size: 12.5px; }
+
+/* искусственный свет: LED-линии */
+.led { position: absolute; left: 0; right: 0; height: 2px; background: #fff7e6; box-shadow: 0 0 10px 2px rgba(255,240,210,.9), 0 0 32px 6px rgba(255,226,170,.45); animation: ledpulse 6s ease-in-out infinite; }
+.led-top { top: 9px; opacity: .85; }
+.led-floor { bottom: 11.6%; left: -5%; right: -5%; }
+@keyframes ledpulse { 50% { opacity: .7; } }
+
+/* прозрачные надписи на стене салона */
+.wallword { position: absolute; left: 50%; top: 23%; transform: translateX(-50%); white-space: nowrap; font-family: var(--wide); font-weight: 700; font-size: 25vw; letter-spacing: .04em; line-height: 1; color: transparent; -webkit-text-stroke: 1.2px rgba(19,19,19,.09); }
+.wallside { position: absolute; top: 50%; font-family: var(--wide); font-weight: 500; font-size: 9px; letter-spacing: .5em; color: rgba(19,19,19,.22); white-space: nowrap; }
+.wallside.l { left: 6px; transform: translateY(-50%) rotate(-90deg) translateX(0); transform-origin: left center; left: 14px; }
+.wallside.r { right: 14px; transform: translateY(-50%) rotate(90deg); transform-origin: right center; }
+
+/* водяной знак раздела */
+section.page { position: relative; }
+section.page > *:not(.wm) { position: relative; z-index: 1; }
+.wm { position: absolute; z-index: 0; left: -2px; top: 30px; pointer-events: none; white-space: nowrap; font-family: var(--wide); font-weight: 700; font-size: 58px; letter-spacing: .02em; line-height: 1; color: transparent; -webkit-text-stroke: 1px rgba(176,141,87,.32); }
+
+/* номер стенда на витрине */
+.car .no { position: absolute; z-index: 1; right: 8px; bottom: 4px; font-family: var(--wide); font-weight: 700; font-size: 34px; line-height: 1; color: transparent; -webkit-text-stroke: 1px rgba(19,19,19,.16); pointer-events: none; }
+.car .cntb { z-index: 4; }
+/* подсветка витрины снизу и латунная LED-кромка */
+.car { box-shadow: inset 0 -2px 0 rgba(176,141,87,.35), 0 6px 18px rgba(19,19,19,.08); }
+.roulette { box-shadow: inset 0 -2px 0 rgba(176,141,87,.5), 0 0 0 1px rgba(176,141,87,.25), 0 10px 26px rgba(19,19,19,.1); }
+
+/* подгонка широкого шрифта */
+.btn-main { padding: 0 16px; }
+.btn-main .bl { font-size: 11.5px; letter-spacing: .2em; }
+.btn-main .bp { font-size: 13.5px; }
+.btn-alt .bp { font-size: 10.5px; }
+.odds .o b, .hrow .p { font-family: var(--sans); font-weight: 700; letter-spacing: 0; }
+.bal { font-size: 12.5px; }
+.wm { left: auto; right: 0; top: -4px; font-size: 40px; -webkit-text-stroke: 1px rgba(176,141,87,.45); }
 </style>
 </head>
 <body>
@@ -278,6 +324,10 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
 <div class="room" aria-hidden="true">
   <svg class="cones" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="8.5,0 11.5,0 24,100 -4,100"/><polygon points="29,0 32,0 46,100 15,100"/><polygon points="48.5,0 51.5,0 66,100 34,100"/><polygon points="68,0 71,0 85,100 54,100"/><polygon points="88.5,0 91.5,0 104,100 76,100"/></svg>
   <div class="ceiling"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="led led-top"></div>
+  <div class="wallword">CAR CASE</div>
+  <div class="wallside l">PRIVATE COLLECTION · EST. 2026</div><div class="wallside r">LUXURY AUTO SALON · № 01</div>
+  <div class="led led-floor"></div>
   <div class="floor"></div>
   <div class="podium"><div class="turn"><img class="wallcar" id="wallcar" alt=""><img class="wallrefl" id="wallrefl" alt=""></div><i class="disc"></i></div>
 </div>
@@ -292,6 +342,7 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
   </header>
   <main>
     <section class="page" id="tab-spin">
+      <div class="wm">SHOWROOM</div>
       <div class="pagehead">Рулетка</div>
       <div class="roulette frost"><svg class="rcones" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="19,0 23,0 33,100 9,100"/><polygon points="48,0 52,0 62,100 38,100"/><polygon points="77,0 81,0 91,100 67,100"/></svg><div class="ptr"></div><div class="shade"></div><div class="strip" id="strip"></div></div>
       <div class="spinrow">
@@ -303,12 +354,14 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
       <div class="panel"><div class="odds" id="odds"></div><div class="hist hide" id="hist"></div></div>
     </section>
     <section class="page hide" id="tab-coll">
+      <div class="wm">GARAGE</div>
       <div class="pagehead">Гараж<small id="collCount"></small></div>
       <div class="sumline frost" id="collTotal"></div>
       <div class="chips" id="collChips"></div>
       <div class="gridwrap"><div class="grid" id="collGrid"></div><div class="pager" id="collPager"></div></div>
     </section>
     <section class="page hide" id="tab-cat">
+      <div class="wm">COLLECTION</div>
       <div class="pagehead">Каталог<small id="catCount"></small><button class="infobtn" id="credBtn" aria-label="Фото"></button></div>
       <div class="prog"><i id="catProg"></i></div>
       <div class="chips" id="catChips"></div>
@@ -501,7 +554,7 @@ function showSummary(cars, news, bestId, bestSold) {
 // ---------- карточки / пагинация ----------
 function carCard(c, { count, locked } = {}) {
   return `<div class="car frost ${locked ? 'locked' : ''}" ${locked ? '' : `data-open="${c.id}"`} style="--c:${RC[c.rarity]}">
-    <i class="gl" style="--d:${(c.id % 9) * .7}s"></i>${emblem(c.rarity)}${count > 1 ? `<span class="cntb">×${count}</span>` : ''}${photo(c)}<div class="nm">${locked ? '???' : c.name}</div><div class="pr">${fmt(c.price)}</div></div>`;
+    <i class="gl" style="--d:${(c.id % 9) * .7}s"></i><span class="no">${String(c.id).padStart(2, '0')}</span>${emblem(c.rarity)}${count > 1 ? `<span class="cntb">×${count}</span>` : ''}${photo(c)}<div class="nm">${locked ? '???' : c.name}</div><div class="pr">${fmt(c.price)}</div></div>`;
 }
 function chipsHtml(key, counts) {
   const cur = view[key].f;
