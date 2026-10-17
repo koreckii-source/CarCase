@@ -12,6 +12,7 @@ for (const line of (fs.existsSync(path.join(dir, '.env')) ? fs.readFileSync(path
 const TOKEN = process.env.BOT_TOKEN, USER_ID = process.env.USER_ID;
 if (!TOKEN || !USER_ID) { console.error('Нужны BOT_TOKEN (в .env) и USER_ID (ваш Telegram ID).'); process.exit(1); }
 const api = async (method, fields = {}, files = []) => {
+  if (!files.length) return (await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) })).json();
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.append(k, typeof v === 'string' ? v : JSON.stringify(v));
   for (const [name, p] of files) fd.append(name, new Blob([fs.readFileSync(p)]), path.basename(p));
