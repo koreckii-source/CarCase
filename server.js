@@ -29,32 +29,44 @@ const START_BALANCE = 100000;
 const SPIN_COST = 5000;
 const SELL_RATIO = 0.4; // за сколько от рыночной цены можно продать машину
 
-// ---------- простое хранилище (JSON-файл) ----------
-const DB_FILE = path.join(__dirname, 'data', 'db.json');
+// ---------- хранилище (JSON-файл) ----------
+// DATA_DIR можно вынести на постоянный диск хостинга (например /data), иначе используется ./data
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
+const DB_BAK = path.join(DATA_DIR, 'db.bak.json');
 let db = { users: {} };
-try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch {}
-let saveTimer = null;
-function save() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+function loadDb() {
+  for (const f of [DB_FILE, DB_BAK]) {
+    try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); if (d && d.users) { console.log(`База загружена: ${f} (игроков: ${Object.keys(d.users).length})`); return d; } } catch {}
+  }
+  console.log(`Новая база: ${DB_FILE}`);
+  return { users: {} };
+}
+db = loadDb();
+let lastBak = 0;
+function save() { // сохраняем сразу и атомарно: сначала во временный файл, затем переименование
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     const tmp = DB_FILE + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(db));
     fs.renameSync(tmp, DB_FILE);
-  }, 200);
+    if (Date.now() - lastBak > 60000) { fs.copyFileSync(DB_FILE, DB_BAK); lastBak = Date.now(); }
+  } catch (e) { console.error('Ошибка сохранения базы:', e.message); }
 }
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { save(); process.exit(0); });
 function getUser(tgUser) {
   const id = String(tgUser.id);
   if (!db.users[id]) {
-    db.users[id] = { name: tgUser.first_name || 'Игрок', balance: START_BALANCE, cars: [], spins: 0, seen: [] };
+    db.users[id] = { id, name: tgUser.first_name || 'Игрок', balance: START_BALANCE, cars: [], spins: 0, seen: [], rev: 0 };
     save();
   }
+  db.users[id].id = id;
   return db.users[id];
 }
 
 // ---------- индивидуальные бонусы (data/boosts.json) ----------
 // Формат: { "username": { "rarity": "mythic", "spins": 10 } } — на следующие N прокруток игрока выпадает указанная редкость.
-const BOOSTS_FILE = process.env.BOOSTS_FILE || path.join(__dirname, 'data', 'boosts.json');
+const BOOSTS_FILE = process.env.BOOSTS_FILE || path.join(DATA_DIR, 'boosts.json');
 function takeBoost(username) {
   if (!username) return null;
   let b; try { b = JSON.parse(fs.readFileSync(BOOSTS_FILE, 'utf8')); } catch { return null; }
@@ -84,12 +96,39 @@ function authUser(req) {
   try { return JSON.parse(params.get('user')); } catch { return null; }
 }
 
+// ---------- подписанный снимок прогресса (хранится у игрока в облаке Telegram) ----------
+// Ключ подписи: SAVE_SECRET (рекомендуется задать на хостинге), иначе BOT_TOKEN.
+const SECRET = process.env.SAVE_SECRET || BOT_TOKEN || 'dev-secret';
+const sign = (data) => crypto.createHmac('sha256', SECRET).update(data).digest('base64url');
+function snapshot(u) {
+  const c = {}; for (const x of u.cars) c[x] = (c[x] || 0) + 1;
+  const data = Buffer.from(JSON.stringify({ i: String(u.id), b: u.balance, s: u.spins, r: u.rev || 0, c, n: u.seen, t: Date.now() })).toString('base64url');
+  return data + '.' + sign(data);
+}
+function restore(u, snap) {
+  const [data, sig] = String(snap || '').split('.');
+  if (!data || !sig) return { error: 'Нет данных' };
+  const good = sign(data);
+  if (good.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(good), Buffer.from(sig))) return { error: 'Подпись не совпала' };
+  let p; try { p = JSON.parse(Buffer.from(data, 'base64url').toString('utf8')); } catch { return { error: 'Повреждённые данные' }; }
+  if (p.i !== String(u.id)) return { error: 'Чужой снимок' };
+  if (!(p.r > (u.rev || 0))) return { error: 'Сервер уже новее' };
+  const cars = [];
+  for (const [id, n] of Object.entries(p.c || {})) { if (!BY_ID.has(Number(id)) || !(n >= 0) || n > 100000) return { error: 'Некорректные данные' }; for (let k = 0; k < n; k++) cars.push(Number(id)); }
+  u.balance = Math.max(0, Math.floor(p.b)); u.spins = Math.max(0, Math.floor(p.s)); u.rev = p.r; u.cars = cars;
+  u.seen = (p.n || []).filter((id) => BY_ID.has(id));
+  save();
+  return { state: view(u) };
+}
+
 // ---------- игровая логика ----------
 function view(u) {
   const counts = {};
   for (const id of u.cars) counts[id] = (counts[id] || 0) + 1;
   return {
     name: u.name,
+    rev: u.rev || 0,
+    snap: snapshot(u),
     balance: u.balance,
     spins: u.spins,
     cars: u.cars, // список id, повторы = дубликаты
@@ -105,6 +144,7 @@ function spin(u, tgUser) {
   if (u.balance < SPIN_COST) return { error: 'Недостаточно средств' };
   u.balance -= SPIN_COST;
   u.spins += 1;
+  u.rev = (u.rev || 0) + 1;
   const car = rollCar(Math.random, takeBoost(tgUser && tgUser.username));
   u.cars.push(car.id);
   const isNew = !u.seen.includes(car.id);
@@ -120,6 +160,7 @@ function sell(u, carId, all) {
   if (!u.cars.includes(carId)) return { error: 'Этой машины нет в коллекции' };
   for (let i = 0; i < n; i++) u.cars.splice(u.cars.indexOf(carId), 1);
   const gain = Math.round(car.price * SELL_RATIO) * n;
+  u.rev = (u.rev || 0) + 1;
   u.balance += gain;
   save();
   return { gain, state: view(u) };
@@ -128,6 +169,7 @@ function sell(u, carId, all) {
 function reset(u) {
   if (u.balance >= SPIN_COST || u.cars.length > 0) return { error: 'Сброс доступен только при банкротстве' };
   u.balance = START_BALANCE;
+  u.rev = (u.rev || 0) + 1;
   save();
   return { state: view(u) };
 }
@@ -139,7 +181,7 @@ const PUBLIC = path.join(__dirname, 'public');
 function readBody(req) {
   return new Promise((resolve) => {
     let b = '';
-    req.on('data', (c) => { b += c; if (b.length > 1e4) req.destroy(); });
+    req.on('data', (c) => { b += c; if (b.length > 2e4) req.destroy(); });
     req.on('end', () => { try { resolve(JSON.parse(b || '{}')); } catch { resolve({}); } });
   });
 }
@@ -161,6 +203,7 @@ const server = http.createServer(async (req, res) => {
       case '/api/spin': r = spin(u, tg); break;
       case '/api/sell': r = sell(u, Number(body.carId), !!body.all); break;
       case '/api/reset': r = reset(u); break;
+      case '/api/restore': r = restore(u, body.snap); break;
       default: return json(res, 404, { error: 'not found' });
     }
     return json(res, r.error ? 400 : 200, r);

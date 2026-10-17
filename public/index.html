@@ -358,8 +358,23 @@ async function api(path, body) {
   if (tg && tg.initData) headers['x-init-data'] = tg.initData;
   else { const d = new URLSearchParams(location.search).get('dev'); if (d) headers['x-dev-user'] = d; }
   const r = await fetch('/api/' + path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
-  const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Ошибка'); return j;
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Ошибка');
+  if (j.state && j.state.snap) saveSnap(j.state.snap);
+  return j;
 }
+// автосохранение: подписанный снимок прогресса в облаке Telegram и в браузере
+const CS = tg && tg.isVersionAtLeast && tg.isVersionAtLeast('6.9') ? tg.CloudStorage : null;
+function saveSnap(snap) { try { CS && CS.setItem('cc_snap', snap); } catch {} try { localStorage.setItem('cc_snap', snap); } catch {} }
+function loadSnap() {
+  return new Promise((res) => {
+    const local = (() => { try { return localStorage.getItem('cc_snap'); } catch { return null; } })();
+    if (!CS) return res(local);
+    let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+    setTimeout(() => fin(local), 2500);
+    try { CS.getItem('cc_snap', (e, v) => fin(!e && v ? v : local)); } catch { fin(local); }
+  });
+}
+const snapRev = (snap) => { try { return JSON.parse(atob(snap.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).r || 0; } catch { return 0; } };
 let islandTimer;
 function toast(msg) {
   const el = $('topIsland'); $('topText').textContent = msg;
@@ -680,6 +695,8 @@ window.addEventListener('resize', () => { if (S) { renderColl(); renderCat(); } 
 (async () => {
   try {
     S = (await api('state')).state;
+    const snap = await loadSnap();
+    if (snap && snapRev(snap) > (S.rev || 0)) { try { S = (await api('restore', { snap })).state; setTimeout(() => toast('Прогресс восстановлен'), 600); } catch {} }
     renderOdds(); renderAll();
     $('strip').innerHTML = S.catalog.slice(0, 12).map(itemHtml).join('');
     setTimeout(() => S.catalog.forEach((c) => { new Image().src = SM(c); }), 600); // прогрев превью
