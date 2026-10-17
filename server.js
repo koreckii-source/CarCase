@@ -179,17 +179,37 @@ function view(u) {
   };
 }
 
-function spin(u, tgUser) {
-  if (u.balance < SPIN_COST) return { error: 'Недостаточно средств' };
-  u.balance -= SPIN_COST;
-  u.spins += 1;
-  u.rev = (u.rev || 0) + 1;
-  const car = rollCar(Math.random, takeBoost(tgUser && tgUser.username));
-  u.cars.push(car.id);
-  const isNew = !u.seen.includes(car.id);
-  if (isNew) u.seen.push(car.id);
+function spin(u, tgUser, count = 1) {
+  const n = Math.min(5, Math.max(1, Math.floor(Number(count)) || 1));
+  if (u.balance < SPIN_COST * n) return { error: 'Недостаточно средств' };
+  const cars = [], news = [];
+  for (let i = 0; i < n; i++) {
+    u.balance -= SPIN_COST;
+    u.spins += 1;
+    u.rev = (u.rev || 0) + 1;
+    const car = rollCar(Math.random, takeBoost(tgUser && tgUser.username));
+    u.cars.push(car.id);
+    const isNew = !u.seen.includes(car.id);
+    if (isNew) u.seen.push(car.id);
+    cars.push(car); news.push(isNew);
+  }
   save();
-  return { car, isNew, state: view(u) };
+  let best = 0; cars.forEach((c, i) => { if (c.price > cars[best].price) best = i; });
+  return { car: cars[best], isNew: news[best], cars, news, best, state: view(u) };
+}
+
+// продажа конкретных количеств: items = [{ id, count }]
+function sellMany(u, items) {
+  if (!Array.isArray(items) || !items.length || items.length > 10) return { error: 'Нечего продавать' };
+  let gain = 0;
+  for (const it of items) {
+    const car = BY_ID.get(Number(it.id)); const want = Math.min(5, Math.max(0, Math.floor(Number(it.count)) || 0));
+    if (!car || !want) continue;
+    for (let i = 0; i < want; i++) { const k = u.cars.indexOf(car.id); if (k < 0) break; u.cars.splice(k, 1); gain += Math.round(car.price * SELL_RATIO); }
+  }
+  if (!gain) return { error: 'Этих машин нет в коллекции' };
+  u.rev = (u.rev || 0) + 1; u.balance += gain; save();
+  return { gain, state: view(u) };
 }
 
 function sell(u, carId, all) {
@@ -240,7 +260,8 @@ const server = http.createServer(async (req, res) => {
     let r;
     switch (url.pathname) {
       case '/api/state': r = { state: view(u) }; break;
-      case '/api/spin': r = spin(u, tg); break;
+      case '/api/spin': r = spin(u, tg, body.count); break;
+      case '/api/sellmany': r = sellMany(u, body.items); break;
       case '/api/sell': r = sell(u, Number(body.carId), !!body.all); break;
       case '/api/reset': r = reset(u); break;
       case '/api/restore': r = restore(u, body.snap); break;
