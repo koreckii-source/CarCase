@@ -693,6 +693,7 @@ window.addEventListener('resize', () => { if (S) { renderColl(); renderCat(); } 
     const snap = await loadSnap();
     if (snap && snapRev(snap) > (S.rev || 0)) { try { S = (await api('restore', { snap })).state; setTimeout(() => toast('Прогресс восстановлен'), 600); } catch {} }
     renderOdds(); renderAll();
+    { const want = new URLSearchParams(location.search).get('tab'); const tb = want && document.querySelector(`.tabs button[data-t="${want}"]`); if (tb && want !== 'spin') tb.onclick({ clientX: 0, clientY: 0 }); }
     $('strip').innerHTML = S.catalog.slice(0, 12).map(itemHtml).join('');
     setTimeout(() => S.catalog.forEach((c) => { new Image().src = SM(c); }), 600);
   } catch (e) { document.querySelector('main').innerHTML = `<div class="empty">${e.message}</div>`; }

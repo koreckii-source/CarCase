@@ -296,22 +296,63 @@ async function tg(method, payload, timeoutMs = 20000) {
   } finally { clearTimeout(t); }
 }
 
+// ---------- анимированные эмодзи (id берутся из emoji.json или переменной EMOJI_IDS) ----------
+function loadEmoji() { try { return JSON.parse(process.env.EMOJI_IDS || fs.readFileSync(path.join(__dirname, 'emoji.json'), 'utf8')); } catch { return {}; } }
+const EMOJI = loadEmoji();
+const emo = (key, fallback) => EMOJI[key] ? `<tg-emoji emoji-id="${EMOJI[key]}">${fallback}</tg-emoji>` : fallback;
+function button(text, url, key, primary) {
+  const b = { text, web_app: { url } };
+  if (EMOJI[key]) b.icon_custom_emoji_id = EMOJI[key];   // анимированный эмодзи слева от текста
+  if (primary) b.style = 'primary';                       // синяя кнопка
+  return b;
+}
+async function tgUpload(method, fields, fileField, filePath, timeoutMs = 40000) {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.append(k, typeof v === 'string' ? v : JSON.stringify(v));
+  fd.append(fileField, new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try { const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, { method: 'POST', body: fd, signal: ctl.signal }); return await r.json(); } finally { clearTimeout(t); }
+}
+let bannerFileId = null;
+async function sendMenu(chatId) {
+  const caption = `${emo('car', '🏎')} <b>CAR CASE</b>\n\nКрутите рулетку и собирайте настоящие автомобили: от «Оки» до Bugatti Chiron.\n\n${emo('coin', '🪙')} Старт: <b>100 000 ₽</b>  ·  ${emo('wheel', '🛞')} Прокрут: <b>5 000 ₽</b>  ·  ×5 за раз\n${emo('gem', '💎')} 76 моделей  ·  6 редкостей  ·  3D-витрина`;
+  const kb = WEBAPP_URL ? { inline_keyboard: [
+    [button('Играть', WEBAPP_URL, 'play', true)],
+    [button('Гараж', WEBAPP_URL + '?tab=coll', 'garage'), button('Каталог', WEBAPP_URL + '?tab=cat', 'catalog')],
+  ] } : undefined;
+  const bannerPath = path.join(PUBLIC, 'banner.jpg');
+  let r;
+  try {
+    if (bannerFileId) r = await tg('sendPhoto', { chat_id: chatId, photo: bannerFileId, caption, parse_mode: 'HTML', reply_markup: kb });
+    else if (fs.existsSync(bannerPath)) {
+      r = await tgUpload('sendPhoto', { chat_id: String(chatId), caption, parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) }, 'photo', bannerPath);
+      const ph = r.ok && r.result.photo; if (ph) bannerFileId = ph[ph.length - 1].file_id;
+    }
+  } catch (e) { console.error('баннер:', e.message); }
+  if (!r || !r.ok) {
+    if (r && !r.ok) console.error('sendPhoto:', r.description);
+    // запасной вариант без кастомных элементов оформления
+    const kb2 = WEBAPP_URL ? { inline_keyboard: [[{ text: 'Играть', web_app: { url: WEBAPP_URL } }]] } : undefined;
+    await tg('sendMessage', { chat_id: chatId, text: '🏎 <b>CAR CASE</b>\n\nКрутите рулетку и собирайте настоящие автомобили.\n💰 Старт: 100 000 ₽ · 🎰 Прокрут: 5 000 ₽', parse_mode: 'HTML', reply_markup: kb2 });
+  }
+}
+
 async function startBot() {
   if (!BOT_TOKEN) return console.log('BOT_TOKEN не задан — бот не запущен (работает только сервер).');
   if (!WEBAPP_URL) console.log('⚠ WEBAPP_URL не задан — кнопка игры не появится.');
   for (;;) {
     try {
       await tg('deleteWebhook', {});
-      if (WEBAPP_URL) {
-        await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: '🎰 Играть', web_app: { url: WEBAPP_URL } } });
-      }
+      if (WEBAPP_URL) await tg('setChatMenuButton', { menu_button: { type: 'web_app', text: 'Играть', web_app: { url: WEBAPP_URL } } });
+      await tg('setMyDescription', { description: 'Car Case — рулетка настоящих автомобилей. Крутите, собирайте коллекцию, продавайте и выбивайте мифические суперкары. Нажмите «Старт».' });
+      await tg('setMyShortDescription', { short_description: 'Рулетка автомобилей: от «Оки» до Bugatti Chiron' });
       break;
     } catch (e) {
       console.error('Нет связи с Telegram (нужен VPN/прокси?):', e.cause ? e.cause.code : e.message);
       await new Promise((r) => setTimeout(r, 5000));
     }
   }
-  console.log('Бот запущен');
+  console.log('Бот запущен', Object.keys(EMOJI).length ? `(эмодзи: ${Object.keys(EMOJI).length})` : '(без премиум-эмодзи)');
   let offset = 0;
   for (;;) {
     try {
@@ -320,16 +361,8 @@ async function startBot() {
         offset = upd.update_id + 1;
         const m = upd.message;
         if (!m || !m.text) continue;
-        if (m.text.startsWith('/start') || m.text.startsWith('/play')) {
-          await tg('sendMessage', {
-            chat_id: m.chat.id,
-            text: '🏎 <b>Автоколлекция</b>\n\nКрути рулетку, собирай машины от «Оки» до Bugatti Chiron!\n💰 Старт: 100 000 ₽ · 🎰 Прокрут: 5 000 ₽\nНенужные машины можно продать и крутить дальше.',
-            parse_mode: 'HTML',
-            reply_markup: WEBAPP_URL
-              ? { inline_keyboard: [[{ text: '🎰 Играть', web_app: { url: WEBAPP_URL } }]] }
-              : undefined,
-          });
-        }
+        if (m.text.startsWith('/start') || m.text.startsWith('/play') || m.text.startsWith('/menu')) await sendMenu(m.chat.id);
+        else if (m.text.startsWith('/id')) await tg('sendMessage', { chat_id: m.chat.id, text: `Ваш Telegram ID: <code>${m.from.id}</code>`, parse_mode: 'HTML' });
       }
     } catch (e) {
       console.error('polling error:', e.name === 'AbortError' ? 'таймаут' : e.message, e.cause ? (e.cause.code || e.cause.message) : '');
