@@ -230,11 +230,57 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
 .bal { font-size: 14px; padding: 5px 11px 5px 7px; } .bal svg { width: 18px; height: 18px; }
 .odds .o { gap: 7px; padding: 7px 8px; } .odds .o .l { font-size: 15px; } .odds .o b { font-size: 12px; } .odds .o .em { width: 24px; height: 24px; }
 .wallcar { opacity: .15; }
+
+/* ================= АВТОСАЛОН ================= */
+.room { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.ceiling { position: absolute; left: 0; right: 0; top: 0; height: 5px; background: #131313; }
+.ceiling i { position: absolute; top: 3px; width: 26px; height: 7px; margin-left: -13px; border-radius: 0 0 13px 13px; background: #fffaf0; box-shadow: 0 0 16px 5px rgba(255,246,226,.85); }
+.ceiling i:nth-child(1) { left: 10%; } .ceiling i:nth-child(2) { left: 30.5%; } .ceiling i:nth-child(3) { left: 50%; } .ceiling i:nth-child(4) { left: 69.5%; } .ceiling i:nth-child(5) { left: 90%; }
+.cones { position: absolute; left: 0; top: 0; width: 100%; height: 82%; filter: blur(12px); }
+.cones polygon { fill: rgba(255,250,236,.2); animation: flick 9s ease-in-out infinite; }
+.cones polygon:nth-child(2) { animation-delay: -3s; } .cones polygon:nth-child(4) { animation-delay: -6s; }
+@keyframes flick { 50% { fill: rgba(255,250,236,.12); } }
+.floor { position: absolute; left: -30%; right: -30%; bottom: 0; height: 30%; background: #151517 url(marble_dark.jpg) center / 560px; transform: perspective(420px) rotateX(58deg); transform-origin: 50% 100%; opacity: .9; }
+.floor::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.05); }
+.podium { position: absolute; left: 50%; bottom: 92px; width: min(118vw, 600px); transform: translateX(-50%); perspective: 900px; opacity: .42; }
+.podium .turn { position: relative; z-index: 1; transform-style: preserve-3d; animation: turn 16s ease-in-out infinite; }
+@keyframes turn { 0%, 100% { transform: rotateY(-11deg); } 50% { transform: rotateY(11deg); } }
+.room .wallcar { position: relative; left: auto; bottom: auto; width: 100%; max-width: none; transform: none; opacity: 1; display: block; }
+.wallrefl { position: absolute; left: 0; top: 100%; width: 100%; transform: scaleY(-1); opacity: .32; -webkit-mask-image: linear-gradient(to top, #000, transparent 45%); mask-image: linear-gradient(to top, #000, transparent 45%); }
+.podium .disc { position: absolute; left: -7%; right: -7%; bottom: -8%; height: 24%; border-radius: 50%; background: rgba(255,255,255,.6); border: 1.5px solid rgba(176,141,87,.6); box-shadow: 0 10px 24px rgba(19,19,19,.25); }
+
+/* латунный отблеск на шапке и главной кнопке */
+.top { position: relative; overflow: hidden; }
+.top::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.1) 50%, transparent 58%); background-size: 260% 100%; animation: glass 10s ease-in-out infinite; }
+.btn-main { position: relative; overflow: hidden; }
+.btn-main::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(176,141,87,.42) 50%, transparent 60%); background-size: 260% 100%; animation: glass 5.5s ease-in-out infinite; }
+@keyframes glass { 0% { background-position: 160% 0; } 35%, 100% { background-position: -60% 0; } }
+.pagehead { position: relative; }
+.pagehead::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; background: var(--brass); transform: translateX(-50%) rotate(45deg); }
+
+/* рулетка как витрина: софиты и отражение на глянце */
+.roulette { height: 184px; }
+.roulette .rcones { position: absolute; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; filter: blur(8px); pointer-events: none; }
+.roulette .rcones polygon { fill: rgba(255,250,236,.55); }
+.strip { align-items: flex-start; height: 146px; padding-top: 12px; box-sizing: border-box; -webkit-box-reflect: below 2px linear-gradient(transparent 55%, rgba(0,0,0,.32)); }
+.item { position: relative; z-index: 2; }
+
+/* карточки-витрины: прожектор, поворотный круг, стеклянный блик */
+.car { background: rgba(255,255,255,.7); }
+.car::before { content: ''; position: absolute; left: 50%; top: 0; width: 76%; height: 84px; transform: translateX(-50%); clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%); background: rgba(255,248,230,.75); filter: blur(7px); pointer-events: none; }
+.car .pw::after { left: 3%; right: 3%; bottom: -7px; height: 17px; border-radius: 50%; background: rgba(255,255,255,.85); border: 1px solid rgba(176,141,87,.85); box-shadow: 0 4px 7px rgba(19,19,19,.22); filter: none; }
+.car .gl { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.6) 50%, transparent 60%); background-size: 250% 100%; background-position: 160% 0; animation: glass 7s ease-in-out infinite; animation-delay: var(--d, 0s); }
+.car.locked .gl, .car.locked::before { display: none; }
 </style>
 </head>
 <body>
 <div class="wall"></div>
-<img class="wallcar" id="wallcar" alt="">
+<div class="room" aria-hidden="true">
+  <svg class="cones" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="8.5,0 11.5,0 24,100 -4,100"/><polygon points="29,0 32,0 46,100 15,100"/><polygon points="48.5,0 51.5,0 66,100 34,100"/><polygon points="68,0 71,0 85,100 54,100"/><polygon points="88.5,0 91.5,0 104,100 76,100"/></svg>
+  <div class="ceiling"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="floor"></div>
+  <div class="podium"><div class="turn"><img class="wallcar" id="wallcar" alt=""><img class="wallrefl" id="wallrefl" alt=""></div><i class="disc"></i></div>
+</div>
 
 <div id="app">
   <header class="top">
@@ -247,7 +293,7 @@ section.in-right { animation: inR .45s cubic-bezier(.2,.9,.3,1) both; } section.
   <main>
     <section class="page" id="tab-spin">
       <div class="pagehead">Рулетка</div>
-      <div class="roulette frost"><div class="ptr"></div><div class="shade"></div><div class="strip" id="strip"></div></div>
+      <div class="roulette frost"><svg class="rcones" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="19,0 23,0 33,100 9,100"/><polygon points="48,0 52,0 62,100 38,100"/><polygon points="77,0 81,0 91,100 67,100"/></svg><div class="ptr"></div><div class="shade"></div><div class="strip" id="strip"></div></div>
       <div class="spinrow">
         <button class="btn-main" id="spinBtn"><span class="bl">Крутить</span><span class="bp">5 000 ₽</span></button>
         <button class="btn-alt" id="spin5"><span class="bl">×5</span><span class="bp">25 000 ₽</span></button>
@@ -386,7 +432,7 @@ function wallCar() {
 }
 function renderWall() {
   const c = wallCar(), el = $('wallcar'); if (el.dataset.id == c.id) return;
-  el.dataset.id = c.id; el.style.opacity = 0; const im = new Image(); im.onload = () => { el.src = im.src; el.style.opacity = ''; }; im.src = BIG(c);
+  el.dataset.id = c.id; el.style.opacity = 0; const im = new Image(); im.onload = () => { el.src = im.src; $('wallrefl').src = im.src; el.style.opacity = ''; }; im.src = BIG(c);
 }
 
 // ---------- шапка / рулетка ----------
@@ -455,7 +501,7 @@ function showSummary(cars, news, bestId, bestSold) {
 // ---------- карточки / пагинация ----------
 function carCard(c, { count, locked } = {}) {
   return `<div class="car frost ${locked ? 'locked' : ''}" ${locked ? '' : `data-open="${c.id}"`} style="--c:${RC[c.rarity]}">
-    ${emblem(c.rarity)}${count > 1 ? `<span class="cntb">×${count}</span>` : ''}${photo(c)}<div class="nm">${locked ? '???' : c.name}</div><div class="pr">${fmt(c.price)}</div></div>`;
+    <i class="gl" style="--d:${(c.id % 9) * .7}s"></i>${emblem(c.rarity)}${count > 1 ? `<span class="cntb">×${count}</span>` : ''}${photo(c)}<div class="nm">${locked ? '???' : c.name}</div><div class="pr">${fmt(c.price)}</div></div>`;
 }
 function chipsHtml(key, counts) {
   const cur = view[key].f;
