@@ -44,12 +44,21 @@ function loadDb() {
 }
 db = loadDb();
 let lastBak = 0;
-function save() { // сохраняем сразу и атомарно: сначала во временный файл, затем переименование
+// запись через временный файл; на Windows переименование иногда блокируется антивирусом — повторяем и при неудаче пишем напрямую
+function writeAtomic(file, text) {
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, text);
+  for (let i = 0; i < 6; i++) {
+    try { fs.renameSync(tmp, file); return; } catch (e) {
+      if (i === 5) { fs.writeFileSync(file, text); try { fs.unlinkSync(tmp); } catch {} return; }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 15 * (i + 1));
+    }
+  }
+}
+function save() { // сохраняем сразу после каждого действия
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    const tmp = DB_FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(db));
-    fs.renameSync(tmp, DB_FILE);
+    writeAtomic(DB_FILE, JSON.stringify(db));
     if (Date.now() - lastBak > 60000) { fs.copyFileSync(DB_FILE, DB_BAK); lastBak = Date.now(); }
   } catch (e) { console.error('Ошибка сохранения базы:', e.message); }
 }
@@ -67,14 +76,44 @@ function getUser(tgUser) {
 // ---------- индивидуальные бонусы (data/boosts.json) ----------
 // Формат: { "username": { "rarity": "mythic", "spins": 10 } } — на следующие N прокруток игрока выпадает указанная редкость.
 const BOOSTS_FILE = process.env.BOOSTS_FILE || path.join(DATA_DIR, 'boosts.json');
-function takeBoost(username) {
+function readBoosts() {
+  let b = {}; try { b = JSON.parse(fs.readFileSync(BOOSTS_FILE, 'utf8')); } catch {}
+  // BOOSTS_SEED (переменная окружения): разовая выдача; применяется, если её метка _v ещё не использовалась
+  if (process.env.BOOSTS_SEED) {
+    try {
+      const seed = JSON.parse(process.env.BOOSTS_SEED);
+      b._applied = Array.isArray(b._applied) ? b._applied : [];
+      if (seed._v && !b._applied.includes(seed._v)) {
+        for (const [k, v] of Object.entries(seed)) if (k !== '_v') b[k] = v;
+        b._applied.push(seed._v); writeBoosts(b);
+        console.log('Применён BOOSTS_SEED:', seed._v);
+      }
+    } catch (e) { console.error('BOOSTS_SEED:', e.message); }
+  }
+  return b;
+}
+function writeBoosts(b) { try { fs.mkdirSync(path.dirname(BOOSTS_FILE), { recursive: true }); writeAtomic(BOOSTS_FILE, JSON.stringify(b, null, 2)); } catch {} }
+function findBoost(b, username) {
   if (!username) return null;
-  let b; try { b = JSON.parse(fs.readFileSync(BOOSTS_FILE, 'utf8')); } catch { return null; }
-  const key = Object.keys(b).find((k) => k.toLowerCase().replace(/^@/, '') === username.toLowerCase());
-  if (!key || !(b[key].spins > 0)) return null;
-  b[key].spins -= 1;
-  try { fs.writeFileSync(BOOSTS_FILE, JSON.stringify(b, null, 2)); } catch {}
-  return b[key].rarity;
+  const key = Object.keys(b).find((k) => !k.startsWith('_') && k.toLowerCase().replace(/^@/, '') === username.toLowerCase());
+  return key ? b[key] : null;
+}
+function takeBoost(username) {
+  const b = readBoosts(), e = findBoost(b, username);
+  if (!e || !(e.spins > 0)) return null;
+  e.spins -= 1; writeBoosts(b);
+  return e.rarity;
+}
+// разовая установка баланса игроку: { "username": { "balance": 1000000000 } } — применяется один раз, затем поле удаляется
+function applyGrant(u, tgUser) {
+  if (!tgUser || !tgUser.username) return;
+  u.username = tgUser.username;
+  const b = readBoosts(), e = findBoost(b, tgUser.username);
+  if (e && typeof e.balance === 'number') {
+    u.balance = Math.max(0, Math.floor(e.balance)); u.rev = (u.rev || 0) + 1;
+    delete e.balance; writeBoosts(b); save();
+    console.log(`Выдан баланс ${u.balance} игроку @${tgUser.username}`);
+  }
 }
 
 // ---------- проверка подписи Telegram initData ----------
@@ -196,6 +235,7 @@ const server = http.createServer(async (req, res) => {
     const tg = authUser(req);
     if (!tg) return json(res, 401, { error: 'Откройте игру через Telegram' });
     const u = getUser(tg);
+    applyGrant(u, tg);
     const body = req.method === 'POST' ? await readBody(req) : {};
     let r;
     switch (url.pathname) {
